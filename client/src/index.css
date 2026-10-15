@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --bg-app: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-card: #f8fafc;
+    --bg-elevated: #f1f5f9;
+    --border-subtle: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --accent-primary: #7c3aed;
+    --accent-graph: #0d9488;
+    --accent-amber: #d97706;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --bg-app: #090d14;
+    --bg-surface: #0f1523;
+    --bg-card: #131b2c;
+    --bg-elevated: #1a2338;
+    --border-subtle: #1f2a3f;
+    --border-strong: #2e3e5c;
+    --accent-primary: #8b5cf6;
+    --accent-graph: #14b8a6;
+    --accent-amber: #f59e0b;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-app);
+    color: #0f172a;
+  }
+
+  .dark body {
+    background-color: var(--bg-app);
+    color: #e2e8f0;
+  }
+
+  code, pre, kbd {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* Command Center Accent Utilities */
+.bg-command-ground {
+  background-color: var(--bg-app);
+}
+
+.bg-command-surface {
+  background-color: var(--bg-surface);
+}
+
+.bg-command-card {
+  background-color: var(--bg-card);
+}
+
+.bg-command-elevated {
+  background-color: var(--bg-elevated);
+}
+
+.border-command-subtle {
+  border-color: var(--border-subtle);
+}
+
+.border-command-strong {
+  border-color: var(--border-strong);
+}
+
+/* Developer Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #263349;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #384964;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
