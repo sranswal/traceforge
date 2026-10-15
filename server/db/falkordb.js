@@ -166,8 +166,15 @@ export async function getClient({ env = process.env, throwOnInvalid = false } = 
       }
     }
 
-    clientInstance = await FalkorDB.connect(options);
-    clientConfigSignature = signature;
+    try {
+      clientInstance = await FalkorDB.connect(options);
+      clientConfigSignature = signature;
+    } catch (err) {
+      if (throwOnInvalid) {
+        throw err;
+      }
+      return null;
+    }
   }
 
   return clientInstance;

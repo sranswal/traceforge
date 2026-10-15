@@ -55,7 +55,12 @@ incidentRouter.post('/seed', async (req, res) => {
     const fixture = SYNTHETIC_INCIDENT_FIXTURE;
     const repoTarget = fixture.repository.fullName; // 'acme/payment-gateway'
 
-    const client = await getClient({ throwOnInvalid: false });
+    let client = null;
+    try {
+      client = await getClient({ throwOnInvalid: false });
+    } catch {
+      client = null;
+    }
     let seeded = false;
     let graphWarning = null;
 
