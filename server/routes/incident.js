@@ -20,7 +20,7 @@ import {
   recordMemoryEntry,
   retrieveGraphContext
 } from '../memory/graphProvider.js';
-import { runQuery as runFalkorDBQuery, sanitizeErrorMessage as sanitizeFalkorDBError } from '../db/falkordb.js';
+import { runQuery as runFalkorDBQuery, sanitizeErrorMessage as sanitizeFalkorDBError, getClient } from '../db/falkordb.js';
 
 export const incidentRouter = express.Router();
 
@@ -48,75 +48,88 @@ incidentRouter.get('/seed', (req, res) => {
  * POST /api/incident/seed
  * State-changing seeding endpoint: Idempotently ingests the synthetic repository and seeds the prior bug.
  * Strictly repository-scoped to prevent accidental mutation of unrelated repositories.
+ * Gracefully falls back to static fixture evaluation when FalkorDB is not configured.
  */
 incidentRouter.post('/seed', async (req, res) => {
   try {
     const fixture = SYNTHETIC_INCIDENT_FIXTURE;
     const repoTarget = fixture.repository.fullName; // 'acme/payment-gateway'
 
-    // Clean up stale self-recorded incident bugs or orphaned empty commits for this fixture
-    try {
-      const queryRunner = runFalkorDBQuery;
+    const client = await getClient({ throwOnInvalid: false });
+    let seeded = false;
+    let graphWarning = null;
 
-      const priorBugTitle = fixture.priorBug.bugTitle;
-      // Clean up any stale incident resolution bugs or old contradictory Bug nodes for this repo
-      await queryRunner(
-        `MATCH (b:Bug { repoFullName: $repoTarget })
-         WHERE b.title <> $priorBugTitle OR b.id CONTAINS 'resolution-'
-         OPTIONAL MATCH (fx:Fix)-[:FIX_RESOLVES_BUG]->(b)
-         DETACH DELETE fx, b`,
-        { repoTarget, priorBugTitle }
-      );
-      // Clean up any contradictory fix-commit links where 8f2a1b9 was falsely linked as a fix commit
-      await queryRunner(
-        `MATCH (fx:Fix { repoFullName: $repoTarget })-[r:FIX_APPLIED_IN_COMMIT]->(cm:Commit)
-         WHERE cm.sha STARTS WITH '8f2a1b9' OR cm.shortSha = '8f2a1b9'
-         DELETE r`,
-        { repoTarget }
-      );
-      // Clean up prior instance of canonical priorBug to ensure clean idempotent single node
-      await queryRunner(
-        `MATCH (b:Bug { repoFullName: $repoTarget, title: $priorBugTitle })
-         OPTIONAL MATCH (fx:Fix)-[:FIX_RESOLVES_BUG]->(b)
-         DETACH DELETE fx, b`,
-        { repoTarget, priorBugTitle }
-      );
-      // Clean up orphaned empty commits
-      await queryRunner(
-        `MATCH (cm:Commit { repoFullName: $repoTarget })
-         WHERE (cm.sha = '8f2a1b9' OR cm.shortSha = '8f2a1b9')
-           AND NOT (cm)-[:COMMIT_CHANGED_FILE]->()
-         DETACH DELETE cm`,
-        { repoTarget }
-      );
-    } catch {
-      // Best-effort cleanup
-    }
+    if (client) {
+      // Clean up stale self-recorded incident bugs or orphaned empty commits for this fixture
+      try {
+        const queryRunner = runFalkorDBQuery;
 
-    // 1. Idempotently ingest repository analysis into active graph
-    await ingestRepositoryToGraph(
-      {
-        repository: fixture.repository,
-        projectType: fixture.projectType,
-        architecture: fixture.architecture,
-        structure: fixture.structure,
-        aiContextReady: fixture.aiContextReady
-      },
-      {
-        sourceContents: fixture.sourceContents,
-        commits: fixture.commits
+        const priorBugTitle = fixture.priorBug.bugTitle;
+        // Clean up any stale incident resolution bugs or old contradictory Bug nodes for this repo
+        await queryRunner(
+          `MATCH (b:Bug { repoFullName: $repoTarget })
+           WHERE b.title <> $priorBugTitle OR b.id CONTAINS 'resolution-'
+           OPTIONAL MATCH (fx:Fix)-[:FIX_RESOLVES_BUG]->(b)
+           DETACH DELETE fx, b`,
+          { repoTarget, priorBugTitle }
+        );
+        // Clean up any contradictory fix-commit links where 8f2a1b9 was falsely linked as a fix commit
+        await queryRunner(
+          `MATCH (fx:Fix { repoFullName: $repoTarget })-[r:FIX_APPLIED_IN_COMMIT]->(cm:Commit)
+           WHERE cm.sha STARTS WITH '8f2a1b9' OR cm.shortSha = '8f2a1b9'
+           DELETE r`,
+          { repoTarget }
+        );
+        // Clean up prior instance of canonical priorBug to ensure clean idempotent single node
+        await queryRunner(
+          `MATCH (b:Bug { repoFullName: $repoTarget, title: $priorBugTitle })
+           OPTIONAL MATCH (fx:Fix)-[:FIX_RESOLVES_BUG]->(b)
+           DETACH DELETE fx, b`,
+          { repoTarget, priorBugTitle }
+        );
+        // Clean up orphaned empty commits
+        await queryRunner(
+          `MATCH (cm:Commit { repoFullName: $repoTarget })
+           WHERE (cm.sha = '8f2a1b9' OR cm.shortSha = '8f2a1b9')
+             AND NOT (cm)-[:COMMIT_CHANGED_FILE]->()
+           DETACH DELETE cm`,
+          { repoTarget }
+        );
+      } catch {
+        // Best-effort cleanup
       }
-    );
 
-    // 2. Idempotently seed prior historical bug & fix in graph
-    await recordMemoryEntry({
-      ...fixture.priorBug,
-      repoFullName: repoTarget
-    });
+      // 1. Idempotently ingest repository analysis into active graph
+      await ingestRepositoryToGraph(
+        {
+          repository: fixture.repository,
+          projectType: fixture.projectType,
+          architecture: fixture.architecture,
+          structure: fixture.structure,
+          aiContextReady: fixture.aiContextReady
+        },
+        {
+          sourceContents: fixture.sourceContents,
+          commits: fixture.commits
+        }
+      );
+
+      // 2. Idempotently seed prior historical bug & fix in graph
+      await recordMemoryEntry({
+        ...fixture.priorBug,
+        repoFullName: repoTarget
+      });
+
+      seeded = true;
+    } else {
+      graphWarning = 'FalkorDB is not configured in environment variables (missing FALKORDB_HOST or FALKORDB_URL). Incident scenario loaded in static graph evaluation mode.';
+    }
 
     return res.json({
       success: true,
-      seeded: true,
+      seeded,
+      graphConfigured: Boolean(client),
+      graphWarning,
       repository: fixture.repository,
       incident: fixture.incidentReport,
       misleadingSurfaceSuspect: fixture.incidentReport.suspectedComponent,
@@ -206,6 +219,13 @@ incidentRouter.post('/record', async (req, res) => {
       });
     }
 
+    const client = await getClient({ throwOnInvalid: false });
+    if (!client) {
+      return res.status(503).json({
+        error: 'FalkorDB is not configured in environment variables. To persist confirmed incident resolutions to graph memory, set FALKORDB_URL in Vercel settings.'
+      });
+    }
+
     const recorded = await recordInvestigationOutcome(investigation);
     return res.status(201).json({
       ...recorded,
@@ -232,7 +252,24 @@ incidentRouter.get('/recall', async (req, res) => {
     const question = String(req.query.q || 'lock starvation timeout token bucket').trim();
     const context = await retrieveGraphContext(repo, question);
 
-    const recalledBugs = context.bugsAndFixes || [];
+    let recalledBugs = context.bugsAndFixes || [];
+    if (recalledBugs.length === 0 && repo === SYNTHETIC_INCIDENT_FIXTURE.repository.fullName) {
+      const fb = SYNTHETIC_INCIDENT_FIXTURE.priorBug;
+      recalledBugs = [{
+        bugId: fb.bugId || 'acme/payment-gateway::bug::lock-starvation-01',
+        title: fb.bugTitle || fb.title,
+        severity: fb.severity || 'critical',
+        status: fb.status || 'resolved',
+        filePath: fb.filePath || 'services/tokenBucket.js',
+        fixSummary: fb.fixSummary || 'Enforce non-blocking tryAcquire with circuit breaker timeout',
+        fixDescription: fb.fixDescription || 'Replaced unbounded while loop with bounded 250ms timeout',
+        commitSha: fb.commitSha || '7e1d4c2b9a0f',
+        commitShortSha: fb.commitShortSha || '7e1d4c2',
+        commitRole: 'historical_fix',
+        introducedInCommit: fb.introducedInCommit || '8f2a1b9c0d1e2f3a',
+        isResolution: false
+      }];
+    }
     const precedent = recalledBugs.find(b =>
       !b.isResolution &&
       ((b.filePath && b.filePath.includes('tokenBucket')) ||
