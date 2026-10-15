@@ -1481,3 +1481,332 @@ describe('FailureChain Phase 5: Graph-Native Incident Investigation', () => {
   });
 });
 
+describe('P0 Production Seed Verification Suite (HTTP 500 Root Cause & Resilient Status Codes)', () => {
+  beforeEach(() => {
+    resetFalkorDBSchemaCacheForTesting();
+    setClientForTesting(null);
+  });
+
+  afterEach(() => {
+    resetFalkorDBSchemaCacheForTesting();
+    setClientForTesting(null);
+  });
+
+  it('1. Returns HTTP 200 and complete canonical fixture on successful seed with configured FalkorDB', async () => {
+    let server;
+    let baseUrl;
+    const executedQueries = [];
+
+    setClientForTesting({
+      selectGraph() {
+        return {
+          async query(cypher, options) {
+            executedQueries.push({ cypher, params: options?.params || {} });
+            return { data: [] };
+          }
+        };
+      },
+      async close() {}
+    });
+
+    try {
+      await new Promise(resolve => {
+        server = app.listen(0, () => {
+          const { port } = server.address();
+          baseUrl = `http://127.0.0.1:${port}`;
+          resolve();
+        });
+      });
+
+      const res = await fetch(`${baseUrl}/api/incident/seed`, {
+        method: 'POST',
+        headers: {
+          'x-vercel-id': 'gs2bg-1792101692051-b137a7efb595',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      assert.equal(res.status, 200);
+      const data = await res.json();
+      assert.equal(data.success, true);
+      assert.equal(data.seeded, true);
+      assert.equal(data.graphConfigured, true);
+      assert.equal(data.requestId, 'gs2bg-1792101692051-b137a7efb595');
+      assert.equal(data.repository.fullName, 'acme/payment-gateway');
+      assert.equal(data.incident.title, 'Payment Gateway 504 Gateway Timeout Cascade');
+      assert.equal(data.misleadingSurfaceSuspect, 'services/rateLimiter.js');
+      assert.ok(data.fixture, 'Must return complete fixture analysis object');
+      assert.ok(executedQueries.length > 0, 'Database queries must have been executed');
+    } finally {
+      if (server) await new Promise(resolve => server.close(resolve));
+    }
+  });
+
+  it('2. Returns HTTP 503 (GRAPH_CONFIG_MISSING) when required FalkorDB environment configuration is absent', async () => {
+    let server;
+    let baseUrl;
+
+    const savedHost = process.env.FALKORDB_HOST;
+    const savedUrl = process.env.FALKORDB_URL;
+    const savedPort = process.env.FALKORDB_PORT;
+    const savedPass = process.env.FALKORDB_PASSWORD;
+
+    delete process.env.FALKORDB_HOST;
+    delete process.env.FALKORDB_URL;
+    delete process.env.FALKORDB_PORT;
+    delete process.env.FALKORDB_PASSWORD;
+
+    setClientForTesting(null);
+
+    try {
+      await new Promise(resolve => {
+        server = app.listen(0, () => {
+          const { port } = server.address();
+          baseUrl = `http://127.0.0.1:${port}`;
+          resolve();
+        });
+      });
+
+      const res = await fetch(`${baseUrl}/api/incident/seed`, {
+        method: 'POST',
+        headers: {
+          'x-request-id': 'test-missing-cfg-001',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Must be 503 Service Unavailable, NOT unhandled 500 and NOT fake 200
+      assert.equal(res.status, 503);
+      const data = await res.json();
+      assert.equal(data.success, false);
+      assert.equal(data.code, 'GRAPH_CONFIG_MISSING');
+      assert.equal(data.stage, 'CONFIG_CHECK');
+      assert.equal(data.requestId, 'test-missing-cfg-001');
+      assert.ok(Array.isArray(data.missing));
+      assert.ok(data.missing.includes('FALKORDB_HOST (or FALKORDB_URL)'));
+      assert.ok(data.error.includes('FalkorDB is not configured'));
+    } finally {
+      if (savedHost !== undefined) process.env.FALKORDB_HOST = savedHost;
+      if (savedUrl !== undefined) process.env.FALKORDB_URL = savedUrl;
+      if (savedPort !== undefined) process.env.FALKORDB_PORT = savedPort;
+      if (savedPass !== undefined) process.env.FALKORDB_PASSWORD = savedPass;
+
+      if (server) await new Promise(resolve => server.close(resolve));
+    }
+  });
+
+  it('3. Returns HTTP 503 (DATABASE_CONNECTION_FAILED) when FalkorDB connection fails (e.g. ECONNREFUSED)', async () => {
+    let server;
+    let baseUrl;
+
+    // Simulate connection failure (e.g. ECONNREFUSED on AWS Lambda)
+    setClientForTesting(new Error('connect ECONNREFUSED 127.0.0.1:6379'));
+
+    try {
+      await new Promise(resolve => {
+        server = app.listen(0, () => {
+          const { port } = server.address();
+          baseUrl = `http://127.0.0.1:${port}`;
+          resolve();
+        });
+      });
+
+      const res = await fetch(`${baseUrl}/api/incident/seed`, {
+        method: 'POST',
+        headers: {
+          'x-vercel-id': 'gs2bg-econnrefused-repro',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      // Must be 503 Service Unavailable with sanitized diagnostic code, NOT 500
+      assert.equal(res.status, 503);
+      const data = await res.json();
+      assert.equal(data.success, false);
+      assert.equal(data.code, 'DATABASE_CONNECTION_FAILED');
+      assert.equal(data.stage, 'DB_CONNECT');
+      assert.equal(data.requestId, 'gs2bg-econnrefused-repro');
+      assert.ok(data.error.includes('Failed to connect to FalkorDB database'));
+      assert.ok(data.error.includes('ECONNREFUSED'));
+    } finally {
+      if (server) await new Promise(resolve => server.close(resolve));
+    }
+  });
+
+  it('4. Returns HTTP 503 (DATABASE_CONNECTION_FAILED) when ping/graph selection fails', async () => {
+    let server;
+    let baseUrl;
+
+    setClientForTesting({
+      selectGraph() {
+        return {
+          async query(cypher) {
+            if (cypher.includes('RETURN 1')) {
+              throw new Error('Connection reset by peer');
+            }
+            return { data: [] };
+          }
+        };
+      },
+      async close() {}
+    });
+
+    try {
+      await new Promise(resolve => {
+        server = app.listen(0, () => {
+          const { port } = server.address();
+          baseUrl = `http://127.0.0.1:${port}`;
+          resolve();
+        });
+      });
+
+      const res = await fetch(`${baseUrl}/api/incident/seed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      assert.equal(res.status, 503);
+      const data = await res.json();
+      assert.equal(data.success, false);
+      assert.equal(data.code, 'DATABASE_CONNECTION_FAILED');
+      assert.equal(data.stage, 'DB_CONNECT');
+      assert.ok(data.error.includes('FalkorDB connection verification failed'));
+    } finally {
+      if (server) await new Promise(resolve => server.close(resolve));
+    }
+  });
+
+  it('5. Returns HTTP 502 (GRAPH_INGESTION_FAILED) when graph ingestion fails', async () => {
+    let server;
+    let baseUrl;
+
+    setClientForTesting({
+      selectGraph() {
+        return {
+          async query(cypher) {
+            if (cypher.includes('RETURN 1')) {
+              return { data: [{ ok: 1 }] };
+            }
+            if (cypher.includes('MERGE (r:Repository')) {
+              throw new Error('Disk full during Cypher write');
+            }
+            return { data: [] };
+          }
+        };
+      },
+      async close() {}
+    });
+
+    try {
+      await new Promise(resolve => {
+        server = app.listen(0, () => {
+          const { port } = server.address();
+          baseUrl = `http://127.0.0.1:${port}`;
+          resolve();
+        });
+      });
+
+      const res = await fetch(`${baseUrl}/api/incident/seed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      assert.equal(res.status, 502);
+      const data = await res.json();
+      assert.equal(data.success, false);
+      assert.equal(data.code, 'GRAPH_INGESTION_FAILED');
+      assert.equal(data.stage, 'INGEST_FIXTURE');
+      assert.ok(data.error.includes('Disk full'));
+    } finally {
+      if (server) await new Promise(resolve => server.close(resolve));
+    }
+  });
+
+  it('6. Retry/idempotency: repeated seeding succeeds and preserves canonical fixture commit roles', async () => {
+    let server;
+    let baseUrl;
+    const executedQueries = [];
+
+    setClientForTesting({
+      selectGraph() {
+        return {
+          async query(cypher, options) {
+            executedQueries.push({ cypher, params: options?.params || {} });
+            return { data: [] };
+          }
+        };
+      },
+      async close() {}
+    });
+
+    try {
+      await new Promise(resolve => {
+        server = app.listen(0, () => {
+          const { port } = server.address();
+          baseUrl = `http://127.0.0.1:${port}`;
+          resolve();
+        });
+      });
+
+      // Pass 1
+      const res1 = await fetch(`${baseUrl}/api/incident/seed`, { method: 'POST' });
+      assert.equal(res1.status, 200);
+      const data1 = await res1.json();
+      assert.equal(data1.success, true);
+      assert.equal(data1.seeded, true);
+
+      // Pass 2 (Retry)
+      const res2 = await fetch(`${baseUrl}/api/incident/seed`, { method: 'POST' });
+      assert.equal(res2.status, 200);
+      const data2 = await res2.json();
+      assert.equal(data2.success, true);
+      assert.equal(data2.seeded, true);
+
+      // Verify canonical fixture structure
+      assert.equal(data2.repository.fullName, 'acme/payment-gateway');
+      assert.equal(data2.incident.title, 'Payment Gateway 504 Gateway Timeout Cascade');
+      assert.equal(data2.incident.suspectedCommit, '8f2a1b9');
+      assert.equal(data2.incident.suspectedComponent, 'services/rateLimiter.js');
+      assert.equal(data2.fixture.priorBug.commitSha, '7e1d4c2b9a0f');
+      assert.equal(data2.fixture.priorBug.commitRole, 'historical_fix');
+      assert.equal(data2.fixture.commits[0].sha, '8f2a1b9c0d1e2f3a');
+      assert.equal(data2.fixture.commits[0].role, 'suspected_refactor');
+      assert.equal(data2.fixture.commits[1].sha, '7e1d4c2b9a0f');
+      assert.equal(data2.fixture.commits[1].role, 'historical_fix');
+
+      // Verify cleanup was executed deterministically on both passes
+      const cleanupQueries = executedQueries.filter(q => q.cypher.includes('b.title <> $priorBugTitle'));
+      assert.equal(cleanupQueries.length, 2, 'Cleanup query must run on every seed call');
+    } finally {
+      if (server) await new Promise(resolve => server.close(resolve));
+    }
+  });
+
+  it('7. Error sanitization: error response never exposes stack traces or secret credentials', async () => {
+    let server;
+    let baseUrl;
+
+    setClientForTesting(new Error('Auth failed for user secret_user:SuperSecretPassword123@db.host.com'));
+
+    try {
+      await new Promise(resolve => {
+        server = app.listen(0, () => {
+          const { port } = server.address();
+          baseUrl = `http://127.0.0.1:${port}`;
+          resolve();
+        });
+      });
+
+      const res = await fetch(`${baseUrl}/api/incident/seed`, { method: 'POST' });
+      assert.equal(res.status, 503);
+      const data = await res.json();
+
+      assert.equal(data.success, false);
+      assert.equal(data.stack, undefined, 'Must not expose stack trace');
+      assert.equal(JSON.stringify(data).includes('SuperSecretPassword123'), false, 'Must not expose password');
+    } finally {
+      if (server) await new Promise(resolve => server.close(resolve));
+    }
+  });
+});
+

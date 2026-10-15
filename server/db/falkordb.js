@@ -30,8 +30,14 @@ export function sanitizeErrorMessage(message = '', secretPassword = process.env.
     sanitized = sanitized.split(password.trim()).join('[REDACTED]');
   }
 
-  // Redact user:pass@host patterns in URIs (falkor://, redis://, etc.)
-  sanitized = sanitized.replace(/([a-zA-Z0-9+.-]+:\/\/)([^:@/\s]+):([^@/\s]+)@/g, '$1[REDACTED]:[REDACTED]@');
+  // Redact user:pass@host patterns in URIs or host strings (e.g., user:pass@host, redis://user:pass@host)
+  sanitized = sanitized.replace(/(?:[a-zA-Z0-9+.-]+:\/\/)?([^:@/\s]+):([^@/\s]+)@([a-zA-Z0-9.-]+)/g, (match, user, pass, host) => {
+    const proto = match.includes('://') ? match.split('://')[0] + '://' : '';
+    return `${proto}[REDACTED]:[REDACTED]@${host}`;
+  });
+
+  // Redact key/token query param patterns
+  sanitized = sanitized.replace(/([?&](?:password|passwd|key|token|auth)=)([^&\s]+)/gi, '$1[REDACTED]');
   return sanitized;
 }
 
@@ -39,6 +45,24 @@ export function sanitizeErrorMessage(message = '', secretPassword = process.env.
  * Validates FalkorDB environment configuration without exposing secrets.
  */
 export function validateFalkorDBConfig(env = process.env) {
+  if (env === process.env && clientInstance && clientConfigSignature === 'test-override') {
+    const graph = (env.FALKORDB_GRAPH || '').trim() || 'traceforge';
+    return {
+      valid: true,
+      configured: true,
+      partiallyConfigured: false,
+      missing: [],
+      errors: [],
+      url: null,
+      host: 'test-override',
+      port: 6379,
+      username: null,
+      password: null,
+      graph,
+      protocol: 'falkor'
+    };
+  }
+
   const url = (env.FALKORDB_URL || '').trim();
   const host = (env.FALKORDB_HOST || '').trim();
   const portRaw = env.FALKORDB_PORT !== undefined && env.FALKORDB_PORT !== null ? String(env.FALKORDB_PORT).trim() : '';
@@ -111,6 +135,10 @@ export function validateFalkorDBConfig(env = process.env) {
  */
 export async function getClient({ env = process.env, throwOnInvalid = false } = {}) {
   if (clientInstance && clientConfigSignature === 'test-override') {
+    if (clientInstance instanceof Error) {
+      if (throwOnInvalid) throw clientInstance;
+      return null;
+    }
     return clientInstance;
   }
 

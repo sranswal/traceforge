@@ -535,9 +535,11 @@ ${topCandidate.priorBug ? `- Re-apply historical mitigation pattern: "${topCandi
   const historicalFix = topCandidate?.priorBug ? {
     title: topCandidate.priorBug.title,
     summary: topCandidate.priorBug.fixSummary,
+    fixSummary: topCandidate.priorBug.fixSummary,
     description: topCandidate.priorBug.fixDescription,
     commitSha: topCandidate.priorBug.commitSha || null,
     commitShortSha: topCandidate.priorBug.commitSha ? topCandidate.priorBug.commitSha.slice(0, 7) : null,
+    shortSha: topCandidate.priorBug.commitSha ? topCandidate.priorBug.commitSha.slice(0, 7) : null,
     role: 'historical_fix',
     roleLabel: 'Historical Fix Commit'
   } : null;

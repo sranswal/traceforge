@@ -20,12 +20,50 @@ import {
   recordMemoryEntry,
   retrieveGraphContext
 } from '../memory/graphProvider.js';
-import { runQuery as runFalkorDBQuery, sanitizeErrorMessage as sanitizeFalkorDBError, getClient } from '../db/falkordb.js';
+import {
+  runQuery as runFalkorDBQuery,
+  sanitizeErrorMessage as sanitizeFalkorDBError,
+  validateFalkorDBConfig,
+  getClient
+} from '../db/falkordb.js';
+import { ensureFalkorDBSchema } from '../memory/falkordbSchema.js';
 
 export const incidentRouter = express.Router();
 
 function sanitizeAnyError(msg) {
   return sanitizeFalkorDBError(msg);
+}
+
+/**
+ * Safe server-side diagnostic logging helper for incident seeding operations.
+ * Logs correlation ID, execution stage, status, and sanitized error messages.
+ * Never leaks secrets, API keys, credentials, or sensitive database tokens.
+ */
+function logSeedDiagnostic({
+  requestId,
+  stage,
+  status,
+  hasConfig = false,
+  missingConfig = [],
+  connectionAttempted = false,
+  graphSelected = false,
+  fixtureLoaded = false,
+  error = null
+}) {
+  const sanitizedMsg = error ? sanitizeAnyError(typeof error === 'string' ? error : error?.message || String(error)) : null;
+  const entry = {
+    tag: '[TraceForge:SeedDiagnostic]',
+    requestId,
+    stage,
+    status,
+    hasConfig,
+    missingConfig,
+    connectionAttempted,
+    graphSelected,
+    fixtureLoaded,
+    error: sanitizedMsg
+  };
+  console.log(JSON.stringify(entry));
 }
 
 /**
@@ -48,64 +86,215 @@ incidentRouter.get('/seed', (req, res) => {
  * POST /api/incident/seed
  * State-changing seeding endpoint: Idempotently ingests the synthetic repository and seeds the prior bug.
  * Strictly repository-scoped to prevent accidental mutation of unrelated repositories.
- * Gracefully falls back to static fixture evaluation when FalkorDB is not configured.
+ * Tracks each execution stage with safe diagnostic logging and returns appropriate HTTP statuses:
+ * - 503 (GRAPH_CONFIG_MISSING) if required FalkorDB environment configuration is missing.
+ * - 503 (DATABASE_CONNECTION_FAILED) if connection/ping to FalkorDB fails.
+ * - 502 (GRAPH_CLEANUP_FAILED / GRAPH_INGESTION_FAILED / MEMORY_RECORDING_FAILED) if database queries fail.
+ * - 200 (OK) if seeding succeeds with canonical graph evidence populated.
  */
 incidentRouter.post('/seed', async (req, res) => {
-  try {
-    const fixture = SYNTHETIC_INCIDENT_FIXTURE;
-    const repoTarget = fixture.repository.fullName; // 'acme/payment-gateway'
+  const correlationId =
+    req.headers['x-request-id'] ||
+    req.headers['x-vercel-id'] ||
+    req.headers['x-correlation-id'] ||
+    req.id ||
+    `seed-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
+  const fixture = SYNTHETIC_INCIDENT_FIXTURE;
+  const repoTarget = fixture.repository.fullName; // 'acme/payment-gateway'
+
+  try {
+    // STAGE 1: Verify FalkorDB environment configuration
+    const validation = validateFalkorDBConfig(process.env);
+    if (!validation.valid) {
+      const errorMsg =
+        validation.errors[0] ||
+        `FalkorDB is not configured: missing ${validation.missing.join(', ')}. Please configure FALKORDB_URL or FALKORDB_HOST in environment variables.`;
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'CONFIG_CHECK',
+        status: 'FAILED',
+        hasConfig: false,
+        missingConfig: validation.missing,
+        connectionAttempted: false,
+        graphSelected: false,
+        fixtureLoaded: false,
+        error: errorMsg
+      });
+      return res.status(503).json({
+        success: false,
+        code: 'GRAPH_CONFIG_MISSING',
+        error: errorMsg,
+        stage: 'CONFIG_CHECK',
+        missing: validation.missing,
+        requestId: correlationId
+      });
+    }
+
+    logSeedDiagnostic({
+      requestId: correlationId,
+      stage: 'CONFIG_CHECK',
+      status: 'SUCCESS',
+      hasConfig: true,
+      missingConfig: [],
+      connectionAttempted: false
+    });
+
+    // STAGE 2: Connect to database and verify graph selection ping
     let client = null;
     try {
-      client = await getClient({ throwOnInvalid: false });
-    } catch {
-      client = null;
+      client = await getClient({ throwOnInvalid: true });
+    } catch (connErr) {
+      const safeConnMsg = sanitizeAnyError(connErr.message);
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'DB_CONNECT',
+        status: 'FAILED',
+        hasConfig: true,
+        missingConfig: [],
+        connectionAttempted: true,
+        graphSelected: false,
+        fixtureLoaded: false,
+        error: safeConnMsg
+      });
+      return res.status(503).json({
+        success: false,
+        code: 'DATABASE_CONNECTION_FAILED',
+        error: `Failed to connect to FalkorDB database: ${safeConnMsg}`,
+        stage: 'DB_CONNECT',
+        requestId: correlationId
+      });
     }
-    let seeded = false;
-    let graphWarning = null;
 
-    if (client) {
-      // Clean up stale self-recorded incident bugs or orphaned empty commits for this fixture
-      try {
-        const queryRunner = runFalkorDBQuery;
+    const graphName = validation.graph || 'traceforge';
+    let graphClient = null;
+    try {
+      graphClient = client.selectGraph(graphName);
+      await graphClient.query('RETURN 1 AS ok');
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'DB_CONNECT',
+        status: 'SUCCESS',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: true
+      });
+    } catch (pingErr) {
+      const safePingMsg = sanitizeAnyError(pingErr.message);
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'DB_CONNECT',
+        status: 'FAILED',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: false,
+        fixtureLoaded: false,
+        error: safePingMsg
+      });
+      return res.status(503).json({
+        success: false,
+        code: 'DATABASE_CONNECTION_FAILED',
+        error: `FalkorDB connection verification failed: ${safePingMsg}`,
+        stage: 'DB_CONNECT',
+        requestId: correlationId
+      });
+    }
 
-        const priorBugTitle = fixture.priorBug.bugTitle;
-        // Clean up any stale incident resolution bugs or old contradictory Bug nodes for this repo
-        await queryRunner(
-          `MATCH (b:Bug { repoFullName: $repoTarget })
-           WHERE b.title <> $priorBugTitle OR b.id CONTAINS 'resolution-'
-           OPTIONAL MATCH (fx:Fix)-[:FIX_RESOLVES_BUG]->(b)
-           DETACH DELETE fx, b`,
-          { repoTarget, priorBugTitle }
-        );
-        // Clean up any contradictory fix-commit links where 8f2a1b9 was falsely linked as a fix commit
-        await queryRunner(
-          `MATCH (fx:Fix { repoFullName: $repoTarget })-[r:FIX_APPLIED_IN_COMMIT]->(cm:Commit)
-           WHERE cm.sha STARTS WITH '8f2a1b9' OR cm.shortSha = '8f2a1b9'
-           DELETE r`,
-          { repoTarget }
-        );
-        // Clean up prior instance of canonical priorBug to ensure clean idempotent single node
-        await queryRunner(
-          `MATCH (b:Bug { repoFullName: $repoTarget, title: $priorBugTitle })
-           OPTIONAL MATCH (fx:Fix)-[:FIX_RESOLVES_BUG]->(b)
-           DETACH DELETE fx, b`,
-          { repoTarget, priorBugTitle }
-        );
-        // Clean up orphaned empty commits
-        await queryRunner(
-          `MATCH (cm:Commit { repoFullName: $repoTarget })
-           WHERE (cm.sha = '8f2a1b9' OR cm.shortSha = '8f2a1b9')
-             AND NOT (cm)-[:COMMIT_CHANGED_FILE]->()
-           DETACH DELETE cm`,
-          { repoTarget }
-        );
-      } catch {
-        // Best-effort cleanup
-      }
+    // STAGE 3: Ensure FalkorDB schema (indexes and constraints)
+    try {
+      await ensureFalkorDBSchema({ client, graphClient, graph: graphName });
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'ENSURE_SCHEMA',
+        status: 'SUCCESS',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: true
+      });
+    } catch (schemaErr) {
+      const safeSchemaMsg = sanitizeAnyError(schemaErr.message);
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'ENSURE_SCHEMA',
+        status: 'FAILED',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: true,
+        error: safeSchemaMsg
+      });
+      return res.status(502).json({
+        success: false,
+        code: 'GRAPH_SCHEMA_FAILED',
+        error: `Failed to initialize FalkorDB schema constraints: ${safeSchemaMsg}`,
+        stage: 'ENSURE_SCHEMA',
+        requestId: correlationId
+      });
+    }
 
-      // 1. Idempotently ingest repository analysis into active graph
-      await ingestRepositoryToGraph(
+    // STAGE 4: Deterministic idempotent cleanup
+    try {
+      const priorBugTitle = fixture.priorBug.bugTitle;
+      await runFalkorDBQuery(
+        `MATCH (b:Bug { repoFullName: $repoTarget })
+         WHERE b.title <> $priorBugTitle OR b.id CONTAINS 'resolution-'
+         OPTIONAL MATCH (fx:Fix)-[:FIX_RESOLVES_BUG]->(b)
+         DETACH DELETE fx, b`,
+        { repoTarget, priorBugTitle },
+        { graph: graphName }
+      );
+      await runFalkorDBQuery(
+        `MATCH (fx:Fix { repoFullName: $repoTarget })-[r:FIX_APPLIED_IN_COMMIT]->(cm:Commit)
+         WHERE cm.sha STARTS WITH '8f2a1b9' OR cm.shortSha = '8f2a1b9'
+         DELETE r`,
+        { repoTarget },
+        { graph: graphName }
+      );
+      await runFalkorDBQuery(
+        `MATCH (b:Bug { repoFullName: $repoTarget, title: $priorBugTitle })
+         OPTIONAL MATCH (fx:Fix)-[:FIX_RESOLVES_BUG]->(b)
+         DETACH DELETE fx, b`,
+        { repoTarget, priorBugTitle },
+        { graph: graphName }
+      );
+      await runFalkorDBQuery(
+        `MATCH (cm:Commit { repoFullName: $repoTarget })
+         WHERE (cm.sha = '8f2a1b9' OR cm.shortSha = '8f2a1b9')
+           AND NOT (cm)-[:COMMIT_CHANGED_FILE]->()
+         DETACH DELETE cm`,
+        { repoTarget },
+        { graph: graphName }
+      );
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'IDEMPOTENT_CLEANUP',
+        status: 'SUCCESS',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: true
+      });
+    } catch (cleanupErr) {
+      const safeCleanupMsg = sanitizeAnyError(cleanupErr.message);
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'IDEMPOTENT_CLEANUP',
+        status: 'FAILED',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: true,
+        error: safeCleanupMsg
+      });
+      return res.status(502).json({
+        success: false,
+        code: 'GRAPH_CLEANUP_FAILED',
+        error: `Failed to execute idempotent graph cleanup: ${safeCleanupMsg}`,
+        stage: 'IDEMPOTENT_CLEANUP',
+        requestId: correlationId
+      });
+    }
+
+    // STAGE 5: Ingest repository analysis fixture into active graph
+    try {
+      const ingestionResult = await ingestRepositoryToGraph(
         {
           repository: fixture.repository,
           projectType: fixture.projectType,
@@ -115,33 +304,138 @@ incidentRouter.post('/seed', async (req, res) => {
         },
         {
           sourceContents: fixture.sourceContents,
-          commits: fixture.commits
+          commits: fixture.commits,
+          graph: graphName
         }
       );
 
-      // 2. Idempotently seed prior historical bug & fix in graph
-      await recordMemoryEntry({
-        ...fixture.priorBug,
-        repoFullName: repoTarget
-      });
+      if (ingestionResult && (ingestionResult.status === 'error' || ingestionResult.ingested === false)) {
+        const errDetail = ingestionResult.error || ingestionResult.reason || 'Graph ingestion failed';
+        const safeIngestMsg = sanitizeAnyError(errDetail);
+        logSeedDiagnostic({
+          requestId: correlationId,
+          stage: 'INGEST_FIXTURE',
+          status: 'FAILED',
+          hasConfig: true,
+          connectionAttempted: true,
+          graphSelected: true,
+          fixtureLoaded: false,
+          error: safeIngestMsg
+        });
+        return res.status(502).json({
+          success: false,
+          code: 'GRAPH_INGESTION_FAILED',
+          error: `Failed to ingest repository structure into FalkorDB: ${safeIngestMsg}`,
+          stage: 'INGEST_FIXTURE',
+          requestId: correlationId
+        });
+      }
 
-      seeded = true;
-    } else {
-      graphWarning = 'FalkorDB is not configured in environment variables (missing FALKORDB_HOST or FALKORDB_URL). Incident scenario loaded in static graph evaluation mode.';
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'INGEST_FIXTURE',
+        status: 'SUCCESS',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: true,
+        fixtureLoaded: true
+      });
+    } catch (ingestErr) {
+      const safeIngestMsg = sanitizeAnyError(ingestErr.message);
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'INGEST_FIXTURE',
+        status: 'FAILED',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: true,
+        fixtureLoaded: false,
+        error: safeIngestMsg
+      });
+      return res.status(502).json({
+        success: false,
+        code: 'GRAPH_INGESTION_FAILED',
+        error: `Failed to ingest repository structure into FalkorDB: ${safeIngestMsg}`,
+        stage: 'INGEST_FIXTURE',
+        requestId: correlationId
+      });
     }
 
-    return res.json({
+    // STAGE 6: Seed canonical prior historical bug and fix in graph
+    try {
+      await recordMemoryEntry(
+        {
+          ...fixture.priorBug,
+          repoFullName: repoTarget
+        },
+        { graph: graphName }
+      );
+
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'SEED_PRIOR_BUG',
+        status: 'SUCCESS',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: true,
+        fixtureLoaded: true
+      });
+    } catch (recordErr) {
+      const safeRecordMsg = sanitizeAnyError(recordErr.message);
+      logSeedDiagnostic({
+        requestId: correlationId,
+        stage: 'SEED_PRIOR_BUG',
+        status: 'FAILED',
+        hasConfig: true,
+        connectionAttempted: true,
+        graphSelected: true,
+        fixtureLoaded: true,
+        error: safeRecordMsg
+      });
+      return res.status(502).json({
+        success: false,
+        code: 'MEMORY_RECORDING_FAILED',
+        error: `Failed to seed prior historical bug into FalkorDB: ${safeRecordMsg}`,
+        stage: 'SEED_PRIOR_BUG',
+        requestId: correlationId
+      });
+    }
+
+    // STAGE 7: Seeding completed successfully
+    logSeedDiagnostic({
+      requestId: correlationId,
+      stage: 'COMPLETE',
+      status: 'SUCCESS',
+      hasConfig: true,
+      connectionAttempted: true,
+      graphSelected: true,
+      fixtureLoaded: true
+    });
+
+    return res.status(200).json({
       success: true,
-      seeded,
-      graphConfigured: Boolean(client),
-      graphWarning,
+      seeded: true,
+      graphConfigured: true,
       repository: fixture.repository,
       incident: fixture.incidentReport,
       misleadingSurfaceSuspect: fixture.incidentReport.suspectedComponent,
-      fixture
+      fixture,
+      requestId: correlationId
     });
   } catch (err) {
-    return res.status(500).json({ error: sanitizeAnyError(err.message) });
+    const safeErr = sanitizeAnyError(err.message);
+    logSeedDiagnostic({
+      requestId: correlationId,
+      stage: 'UNHANDLED_ERROR',
+      status: 'FAILED',
+      error: safeErr
+    });
+    return res.status(500).json({
+      success: false,
+      code: 'INTERNAL_SERVER_ERROR',
+      error: safeErr,
+      requestId: correlationId
+    });
   }
 });
 
