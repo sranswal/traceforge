@@ -431,11 +431,29 @@ export async function runIncidentInvestigation(report = {}, analysis = {}, optio
   const keywordBaseline = computeKeywordBaseline(report, analysis);
 
   // Retrieve connected graph context (or use injected context for testing/simulation)
-  const graphContext = options.graphContext || await retrieveGraphContext(
+  const rawGraphContext = options.graphContext || await retrieveGraphContext(
     repoFullName,
     `${report.title || ''} ${report.symptoms || ''} ${report.entryPoint || ''}`,
     options
   );
+
+  let graphContext = rawGraphContext;
+  if (options.ablateCausalEdge || options.ablation) {
+    const callerToAblate = options.ablation?.caller || 'verifyToken';
+    const calleeToAblate = options.ablation?.callee || 'acquireTokenLock';
+    graphContext = {
+      ...rawGraphContext,
+      symbols: (rawGraphContext.symbols || []).map(s => {
+        if (s.name === callerToAblate) {
+          return {
+            ...s,
+            callsSymbols: (s.callsSymbols || []).filter(c => c !== calleeToAblate)
+          };
+        }
+        return s;
+      })
+    };
+  }
 
   const connectedEvidence = traceConnectedGraphEvidence(report, graphContext);
   const candidates = evaluateCandidateRankings(report, connectedEvidence, graphContext);
@@ -596,7 +614,13 @@ ${topCandidate.priorBug ? `- Re-apply historical mitigation pattern: "${topCandi
       suggestedPatch: isGraphSufficient
         ? `// Proposed recovery patch for ${rootCauseFile}\n// Restore bounded timeout and circuit breaker fallback\nif (!tryAcquireLock(resourceId, 250)) throw new LockTimeoutError();`
         : '// Insufficient evidence to synthesize a safe patch proposal'
-    }
+    },
+    experiment: (options.ablateCausalEdge || options.ablation) ? {
+      active: true,
+      type: 'ablate_edge',
+      excludedRelationship: options.ablation || { caller: 'verifyToken', callee: 'acquireTokenLock' },
+      description: 'Controlled read-only ablation: Decisive call edge verifyToken -> acquireTokenLock was excluded from graph traversal to test causal necessity.'
+    } : null
   };
 }
 

@@ -445,7 +445,7 @@ incidentRouter.post('/seed', async (req, res) => {
  */
 incidentRouter.post('/investigate', async (req, res) => {
   try {
-    const { report, analysis } = req.body || {};
+    const { report, analysis, experiment } = req.body || {};
     if (!report || typeof report !== 'object') {
       return res.status(400).json({ error: 'Incident report payload object is required.' });
     }
@@ -464,7 +464,15 @@ incidentRouter.post('/investigate', async (req, res) => {
           ? SYNTHETIC_INCIDENT_FIXTURE
           : analysis);
 
-    const investigation = await runIncidentInvestigation(report, effectiveAnalysis);
+    const options = {};
+    if (experiment && (experiment.ablateCausalEdge || experiment.type === 'ablate_edge' || experiment.type === 'exclude_relationship')) {
+      options.ablateCausalEdge = true;
+      if (experiment.caller && experiment.callee) {
+        options.ablation = { caller: experiment.caller, callee: experiment.callee };
+      }
+    }
+
+    const investigation = await runIncidentInvestigation(report, effectiveAnalysis, options);
     return res.json(investigation);
   } catch (err) {
     return res.status(500).json({ error: sanitizeAnyError(err.message) });

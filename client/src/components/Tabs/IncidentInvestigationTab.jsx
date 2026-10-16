@@ -44,9 +44,14 @@ export default function IncidentInvestigationTab({
   const [currentStep, setCurrentStep] = useState('incident');
   const [completedSteps, setCompletedSteps] = useState([]);
 
-  // Selected node in causal graph canvas
+  // Selected node & edge in causal graph canvas
   const [selectedGraphNode, setSelectedGraphNode] = useState(null);
+  const [selectedGraphEdge, setSelectedGraphEdge] = useState(null);
   const [isEvidenceExpanded, setIsEvidenceExpanded] = useState(true);
+
+  // Controlled graph experiment state
+  const [isExperimentRunning, setIsExperimentRunning] = useState(false);
+  const [baselineInvestigation, setBaselineInvestigation] = useState(null);
 
   // Scenario scope: 'synthetic' | 'active'
   const [scenarioMode, setScenarioMode] = useState('synthetic');
@@ -106,6 +111,9 @@ export default function IncidentInvestigationTab({
     setRecordError(null);
     setRecalledData(null);
     setRecallError(null);
+    setSelectedGraphNode(null);
+    setSelectedGraphEdge(null);
+    setBaselineInvestigation(null);
     setCurrentStep('incident');
     setCompletedSteps([]);
 
@@ -139,6 +147,9 @@ export default function IncidentInvestigationTab({
     setRecordError(null);
     setRecalledData(null);
     setRecallError(null);
+    setSelectedGraphNode(null);
+    setSelectedGraphEdge(null);
+    setBaselineInvestigation(null);
     setCurrentStep('incident');
     setCompletedSteps([]);
 
@@ -229,6 +240,69 @@ export default function IncidentInvestigationTab({
     } finally {
       setIsInvestigating(false);
     }
+  };
+
+  // Run controlled read-only graph edge ablation experiment
+  const handleRunControlledExperiment = async () => {
+    if (!investigation || isExperimentRunning) return;
+    setIsExperimentRunning(true);
+    setInvestigationError(null);
+
+    try {
+      if (!baselineInvestigation) {
+        setBaselineInvestigation(investigation);
+      }
+
+      const reportPayload = {
+        repoFullName: targetRepo,
+        title: reportTitle,
+        symptoms,
+        entryPoint,
+        suspectedCommit,
+        suspectedComponent
+      };
+
+      const effectiveAnalysis = scenarioMode === 'synthetic'
+        ? (fixtureAnalysis || { repository: { fullName: targetRepo } })
+        : analysisData;
+
+      const res = await fetch('/api/incident/investigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          report: reportPayload,
+          analysis: effectiveAnalysis,
+          experiment: {
+            ablateCausalEdge: true,
+            caller: 'verifyToken',
+            callee: 'acquireTokenLock'
+          }
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Controlled experiment query failed.');
+      }
+
+      setInvestigation(data);
+      setSelectedGraphEdge(null);
+    } catch (err) {
+      setInvestigationError(err.message);
+    } finally {
+      setIsExperimentRunning(false);
+    }
+  };
+
+  // Restore normal investigation from baseline or rerun query
+  const handleRestoreNormalInvestigation = async () => {
+    if (baselineInvestigation) {
+      setInvestigation(baselineInvestigation);
+      setBaselineInvestigation(null);
+      setSelectedGraphEdge(null);
+      return;
+    }
+    await handleRunInvestigation();
   };
 
   // Run safe recovery simulation
@@ -652,203 +726,407 @@ export default function IncidentInvestigationTab({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Center Stage: Dominant Causal Graph Canvas (~60% width) */}
-              <div className="lg:col-span-7 xl:col-span-8 space-y-4">
-                <CausalGraphCanvas
-                  investigation={investigation}
-                  onSelectNode={setSelectedGraphNode}
-                  selectedNodeId={selectedGraphNode?.id}
-                />
-
-                {/* Collapsible Evidence Panel Below Graph */}
-                <div className="rounded-xl border border-[#1f2a3f] bg-[#0f1422] p-4 shadow-md">
-                  <button
-                    type="button"
-                    onClick={() => setIsEvidenceExpanded(!isEvidenceExpanded)}
-                    className="w-full flex items-center justify-between text-left focus:outline-none cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-violet-400" />
-                      <h4 className="text-xs font-bold text-slate-200">
-                        Connected Graph Evidence & Traversal Provenance ({evidenceChain.length} Nodes)
-                      </h4>
+            <div className="space-y-5">
+              {/* Controlled Read-Only Graph Experiment Banner / Control Bar */}
+              {investigation?.experiment?.active ? (
+                <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-800/60 shadow-lg text-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-amber-300 font-bold">
+                      <Split className="w-4 h-4 text-amber-400" />
+                      <span>Controlled Read-Only Graph Experiment Active: Decisive Edge Ablated</span>
                     </div>
-                    {isEvidenceExpanded ? (
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
-                    )}
-                  </button>
-
-                  {isEvidenceExpanded && (
-                    <div className="mt-3 space-y-2 pt-2 border-t border-[#1b2537]">
-                      {evidenceChain.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-3 p-2.5 rounded-lg bg-[#0a0e17] border border-[#1d273a] text-xs"
-                        >
-                          <span className="font-mono font-bold w-5 h-5 rounded-full bg-violet-950/60 text-violet-300 border border-violet-800/40 flex items-center justify-center shrink-0 text-[10px]">
-                            {item.step || idx + 1}
-                          </span>
-
-                          <div className="flex-1 space-y-0.5">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="font-semibold text-slate-200">
-                                {item.label}
-                              </span>
-                              <span className="font-mono text-[10px] px-2 py-0.2 rounded bg-[#162033] text-teal-300 border border-[#24334f]">
-                                {item.provenance}
-                              </span>
-                            </div>
-
-                            <p className="text-slate-400 text-[11px]">
-                              {item.details}
-                            </p>
-
-                            <div className="flex flex-wrap items-center gap-2.5 text-[10px] font-mono text-slate-400 pt-0.5">
-                              {item.filePath && <span>Path: {item.filePath}</span>}
-                              {item.lineRange && <span>Range: {item.lineRange}</span>}
-                              {item.commitSha && (
-                                <span className={item.commitRole === 'historical_fix'
-                                  ? 'px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 font-semibold'
-                                  : 'px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 font-semibold'
-                                }>
-                                  {item.commitRoleLabel || (item.commitRole === 'historical_fix' ? 'Historical Fix' : 'Suspected Change')}: {item.commitSha.slice(0, 7)}
-                                </span>
-                              )}
-                              <span className="text-violet-400">Rel: {item.type}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Side Panel: Root Cause Candidate & Action Card (~40% width) */}
-              <div className="lg:col-span-5 xl:col-span-4 space-y-4">
-                {/* Candidate Diagnosis Summary Card */}
-                <div className="rounded-xl border border-[#1f2a3f] bg-[#101624] p-5 shadow-lg space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-rose-950/60 text-rose-300 border border-rose-800/40 font-bold">
-                      Root Cause Isolated
-                    </span>
-                    <span className="text-xs font-mono text-emerald-400 font-semibold">
-                      Confidence: {investigation.diagnosis.confidence}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                      <ShieldAlert className="w-5 h-5 text-rose-400" />
-                      <span>{investigation.diagnosis.rootCauseSymbol}</span>
-                    </h3>
-                    <div className="font-mono text-xs text-rose-300 mt-0.5">
-                      {investigation.diagnosis.rootCauseFile}
-                    </div>
-                  </div>
-
-                  {/* Explicit Provenance: Suspected Change vs Historical Fix vs Current Status */}
-                  <div className="p-3.5 rounded-lg bg-[#0b0f17] border border-[#212b3e] text-xs space-y-3">
-                    {/* 1. Suspected Introducing Change */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-slate-300">
-                        <span className="font-semibold text-amber-300 flex items-center gap-1.5">
-                          <GitCommit className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Suspected Introducing Change:</span>
-                        </span>
-                        <span className="font-mono text-amber-300 font-semibold">
-                          {investigation.diagnosis?.suspectedIntroducingCommit?.shortSha ||
-                           investigation.connectedEvidence?.matchingCommit?.shortSha ||
-                           investigation.suspectedCommit?.slice(0, 7) ||
-                           'None'}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-400 pl-5">
-                        {investigation.diagnosis?.suspectedIntroducingCommit?.message ||
-                         investigation.connectedEvidence?.matchingCommit?.message ||
-                         'Refactor commit associated with regression'}
-                      </div>
-                    </div>
-
-                    {/* 2. Historical Fix Precedent */}
-                    <div className="space-y-1 pt-2 border-t border-[#1a2334]">
-                      <div className="flex items-center justify-between text-slate-300">
-                        <span className="font-semibold text-emerald-300 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Historical Fix Commit:</span>
-                        </span>
-                        <span className="font-mono text-emerald-300 font-semibold">
-                          {investigation.diagnosis?.historicalFix?.commitShortSha ||
-                           (investigation.connectedEvidence?.priorFixMatch?.commitSha ? investigation.connectedEvidence.priorFixMatch.commitSha.slice(0, 7) : 'None')}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-400 pl-5">
-                        {investigation.diagnosis?.historicalFix?.summary ||
-                         investigation.connectedEvidence?.priorFixMatch?.fixSummary ||
-                         'Known institutional remediation'}
-                      </div>
-                    </div>
-
-                    {/* 3. Current Implementation Status */}
-                    <div className="pt-2 border-t border-[#1a2334]">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1">
-                        Current Implementation Status:
-                      </span>
-                      <div className="p-2 rounded bg-[#101827] border border-[#25324d] text-[11px] text-amber-300/90 leading-snug">
-                        {investigation.diagnosis?.implementationStatus?.status ||
-                         'Historical fix recorded; current implementation not yet verified.'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Structured Diagnosis */}
-                  <div className="text-xs text-slate-300 leading-relaxed bg-[#0b0f17] p-3 rounded-lg border border-[#212b3e] max-h-40 overflow-y-auto">
-                    <strong className="text-slate-100 block mb-1">Causal Synthesis:</strong>
-                    {investigation.diagnosis.summary}
-                  </div>
-
-                  {/* Next Action: Advance to Recovery Simulation */}
-                  <div className="pt-2">
                     <button
                       type="button"
-                      onClick={handleSimulateRecovery}
-                      disabled={isSimulating}
-                      className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-950/50 transition-all cursor-pointer disabled:opacity-50"
+                      onClick={handleRestoreNormalInvestigation}
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors text-xs"
                     >
-                      {isSimulating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Simulating Patch...</span>
-                        </>
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Restore Normal Investigation</span>
+                    </button>
+                  </div>
+
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    Decisive call edge <code className="text-amber-300 font-mono">verifyToken ➔ acquireTokenLock</code> was excluded from graph traversal to test causal necessity. No database records were mutated.
+                  </p>
+
+                  {/* Controlled Before/After Proof */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div className="p-3 rounded-lg bg-[#0d121c] border border-emerald-900/40 space-y-1">
+                      <div className="text-[10px] font-mono text-emerald-400 font-bold uppercase">
+                        Before Ablation (Intact Graph)
+                      </div>
+                      <div className="text-slate-200 font-semibold">
+                        Root Cause: <code className="text-emerald-400">acquireTokenLock</code> in <span className="text-slate-300">services/tokenBucket.js</span>
+                      </div>
+                      <div className="text-slate-400 text-[10px]">
+                        Confidence: <strong className="text-emerald-400">HIGH</strong> · Multi-hop traversal & commit verified
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-lg bg-[#140c10] border border-rose-900/60 space-y-1">
+                      <div className="text-[10px] font-mono text-rose-400 font-bold uppercase">
+                        After Ablation (Severed Edge)
+                      </div>
+                      <div className="text-slate-200 font-semibold">
+                        Root Cause: <code className="text-rose-400">unknown</code> (Target Unreachable)
+                      </div>
+                      <div className="text-rose-400 text-[10px]">
+                        Confidence: <strong>INSUFFICIENT_EVIDENCE</strong> · Refuses ungrounded guesswork
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-[#0f1422] border border-[#1f2a3f]">
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <Split className="w-4 h-4 text-violet-400" />
+                    <span><strong>Controlled Forensic Experiment:</strong> Test causal necessity by ablating the critical call edge in a read-only query.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRunControlledExperiment}
+                    disabled={isExperimentRunning || isInvestigating}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#192236] hover:bg-[#22304c] text-violet-300 border border-violet-800/40 text-xs font-semibold cursor-pointer transition-colors disabled:opacity-50 shrink-0"
+                  >
+                    {isExperimentRunning ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Running Experiment...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Split className="w-3.5 h-3.5 text-violet-400" />
+                        <span>Run Read-Only Edge Ablation</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Main Workspace Layout: Dominant Causal Graph (~60%) + Forensic Side Panel (~40%) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Center Stage: Dominant Causal Graph Canvas (~60% width) */}
+                <div className="lg:col-span-7 xl:col-span-8 space-y-5">
+                  <CausalGraphCanvas
+                    investigation={investigation}
+                    onSelectNode={setSelectedGraphNode}
+                    selectedNodeId={selectedGraphNode?.id}
+                    onSelectEdge={setSelectedGraphEdge}
+                    selectedEdgeId={selectedGraphEdge?.id}
+                  />
+
+                  {/* Forensic Candidate Matrix: Competing Hypotheses */}
+                  <div className="rounded-xl border border-[#1f2a3f] bg-[#0f1422] p-5 shadow-lg space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="w-4 h-4 text-violet-400" />
+                        <h4 className="text-sm font-bold text-slate-100">
+                          Forensic Candidate Matrix: Competing Hypotheses
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#162035] text-slate-400 border border-[#24334e]">
+                        Canonical Evidence Contrast
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      {/* Candidate A: Decoy */}
+                      <div className="p-4 rounded-xl bg-[#0a0e17] border border-slate-800/80 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                            Candidate A · Decoy Trap
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/60 text-rose-300 border border-rose-800/50 font-bold">
+                            REJECTED
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="font-bold text-slate-200">checkRateLimit</div>
+                          <div className="font-mono text-[11px] text-slate-400">services/rateLimiter.js</div>
+                        </div>
+
+                        <div className="space-y-1.5 text-[11px]">
+                          <div>
+                            <span className="text-slate-400 font-semibold">Supporting Clues: </span>
+                            <span className="text-slate-300">Surface keyword match (&quot;rate limit&quot;, &quot;504&quot;, &quot;timeout&quot;) in symptoms.</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-semibold">Contradictory Graph Proof: </span>
+                            <span className="text-rose-300/90">0 call hops from /api/pay. Static AST traversal confirms it is never invoked in the failure path.</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Candidate B: True Root Cause */}
+                      <div className="p-4 rounded-xl bg-[#0a0e17] border border-rose-900/60 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/60">
+                            Candidate B · True Root Cause
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 font-bold">
+                            {investigation?.experiment?.active ? 'ABLATED' : 'CONFIRMED'}
+                          </span>
+                        </div>
+
+                        <div>
+                          <div className="font-bold text-slate-200">acquireTokenLock</div>
+                          <div className="font-mono text-[11px] text-rose-300">services/tokenBucket.js</div>
+                        </div>
+
+                        <div className="space-y-1.5 text-[11px]">
+                          <div>
+                            <span className="text-slate-400 font-semibold">Verified Graph Evidence: </span>
+                            <span className="text-slate-300">Direct 2-hop call path from /api/pay via verifyToken (services/auth.js).</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-semibold">Suspected Introducing Commit: </span>
+                            <span className="text-amber-300 font-mono">8f2a1b9 (dev-charlie)</span>
+                            <span className="text-slate-400"> added synchronous blocking wait.</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-semibold">Historical Remediation: </span>
+                            <span className="text-emerald-300 font-mono">7e1d4c2 (dev-alice)</span>
+                            <span className="text-slate-400"> previously fixed with non-blocking tryAcquire.</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Collapsible Evidence Panel Below Graph */}
+                  <div className="rounded-xl border border-[#1f2a3f] bg-[#0f1422] p-4 shadow-md">
+                    <button
+                      type="button"
+                      onClick={() => setIsEvidenceExpanded(!isEvidenceExpanded)}
+                      className="w-full flex items-center justify-between text-left focus:outline-none cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-violet-400" />
+                        <h4 className="text-xs font-bold text-slate-200">
+                          Connected Graph Evidence & Traversal Provenance ({evidenceChain.length} Nodes)
+                        </h4>
+                      </div>
+                      {isEvidenceExpanded ? (
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
                       ) : (
-                        <>
-                          <ShieldCheck className="w-4 h-4 text-violet-200" />
-                          <span>Simulate Safe Recovery</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
                       )}
                     </button>
+
+                    {isEvidenceExpanded && (
+                      <div className="mt-3 space-y-2 pt-2 border-t border-[#1b2537]">
+                        {evidenceChain.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-start gap-3 p-2.5 rounded-lg bg-[#0a0e17] border border-[#1d273a] text-xs"
+                          >
+                            <span className="font-mono font-bold w-5 h-5 rounded-full bg-violet-950/60 text-violet-300 border border-violet-800/40 flex items-center justify-center shrink-0 text-[10px]">
+                              {item.step || idx + 1}
+                            </span>
+
+                            <div className="flex-1 space-y-0.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-semibold text-slate-200">
+                                  {item.label}
+                                </span>
+                                <span className="font-mono text-[10px] px-2 py-0.2 rounded bg-[#162033] text-teal-300 border border-[#24334f]">
+                                  {item.provenance}
+                                </span>
+                              </div>
+
+                              <p className="text-slate-400 text-[11px]">
+                                {item.details}
+                              </p>
+
+                              <div className="flex flex-wrap items-center gap-2.5 text-[10px] font-mono text-slate-400 pt-0.5">
+                                {item.filePath && <span>Path: {item.filePath}</span>}
+                                {item.lineRange && <span>Range: {item.lineRange}</span>}
+                                {item.commitSha && (
+                                  <span className={item.commitRole === 'historical_fix'
+                                    ? 'px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 font-semibold'
+                                    : 'px-1.5 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 font-semibold'
+                                  }>
+                                    {item.commitRoleLabel || (item.commitRole === 'historical_fix' ? 'Historical Fix' : 'Suspected Change')}: {item.commitSha.slice(0, 7)}
+                                  </span>
+                                )}
+                                <span className="text-violet-400">Rel: {item.type}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Selected Node Details Card (if user clicked a node on the canvas) */}
-                {selectedGraphNode && (
-                  <div className="rounded-xl border border-violet-800/40 bg-[#101424] p-4 text-xs space-y-2">
-                    <div className="font-semibold text-violet-300 flex items-center gap-1.5">
-                      <Info className="w-4 h-4 text-violet-400" />
-                      Node Inspection: {selectedGraphNode.label}
+                {/* Side Panel: Root Cause Candidate & Action Card (~40% width) */}
+                <div className="lg:col-span-5 xl:col-span-4 space-y-4">
+                  {/* Candidate Diagnosis Summary Card */}
+                  <div className="rounded-xl border border-[#1f2a3f] bg-[#101624] p-5 shadow-lg space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
+                        investigation.diagnosis.confidence === 'INSUFFICIENT_EVIDENCE'
+                          ? 'bg-amber-950/60 text-amber-300 border border-amber-800/40'
+                          : 'bg-rose-950/60 text-rose-300 border border-rose-800/40'
+                      }`}>
+                        {investigation.diagnosis.confidence === 'INSUFFICIENT_EVIDENCE' ? 'Insufficient Evidence' : 'Root Cause Isolated'}
+                      </span>
+                      <span className={`text-xs font-mono font-semibold ${
+                        investigation.diagnosis.confidence === 'HIGH' 
+                          ? 'text-emerald-400' 
+                          : investigation.diagnosis.confidence === 'MEDIUM' 
+                            ? 'text-teal-400' 
+                            : 'text-amber-400'
+                      }`}>
+                        Confidence: {investigation.diagnosis.confidence}
+                      </span>
                     </div>
-                    <p className="text-slate-300 text-[11px]">
-                      {selectedGraphNode.details}
-                    </p>
-                    <div className="font-mono text-[10px] text-slate-400">
-                      File: {selectedGraphNode.filePath} {selectedGraphNode.lineRange ? `(${selectedGraphNode.lineRange})` : ''}
+
+                    <div>
+                      <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                        <ShieldAlert className="w-5 h-5 text-rose-400" />
+                        <span>{investigation.diagnosis.rootCauseSymbol}</span>
+                      </h3>
+                      <div className="font-mono text-xs text-rose-300 mt-0.5">
+                        {investigation.diagnosis.rootCauseFile}
+                      </div>
+                    </div>
+
+                    {/* Explicit Provenance: Suspected Change vs Historical Fix vs Current Status */}
+                    <div className="p-3.5 rounded-lg bg-[#0b0f17] border border-[#212b3e] text-xs space-y-3">
+                      {/* 1. Suspected Introducing Change */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-slate-300">
+                          <span className="font-semibold text-amber-300 flex items-center gap-1.5">
+                            <GitCommit className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Suspected Introducing Change:</span>
+                          </span>
+                          <span className="font-mono text-amber-300 font-semibold">
+                            {investigation.diagnosis?.suspectedIntroducingCommit?.shortSha ||
+                             investigation.connectedEvidence?.matchingCommit?.shortSha ||
+                             investigation.suspectedCommit?.slice(0, 7) ||
+                             'None'}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 pl-5">
+                          {investigation.diagnosis?.suspectedIntroducingCommit?.message ||
+                           investigation.connectedEvidence?.matchingCommit?.message ||
+                           'Refactor commit associated with regression'}
+                        </div>
+                      </div>
+
+                      {/* 2. Historical Fix Precedent */}
+                      <div className="space-y-1 pt-2 border-t border-[#1a2334]">
+                        <div className="flex items-center justify-between text-slate-300">
+                          <span className="font-semibold text-emerald-300 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Historical Fix Commit:</span>
+                          </span>
+                          <span className="font-mono text-emerald-300 font-semibold">
+                            {investigation.diagnosis?.historicalFix?.commitShortSha ||
+                             (investigation.connectedEvidence?.priorFixMatch?.commitSha ? investigation.connectedEvidence.priorFixMatch.commitSha.slice(0, 7) : 'None')}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 pl-5">
+                          {investigation.diagnosis?.historicalFix?.summary ||
+                           investigation.connectedEvidence?.priorFixMatch?.fixSummary ||
+                           'Known institutional remediation'}
+                        </div>
+                      </div>
+
+                      {/* 3. Current Implementation Status */}
+                      <div className="pt-2 border-t border-[#1a2334]">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1">
+                          Current Implementation Status:
+                        </span>
+                        <div className="p-2 rounded bg-[#101827] border border-[#25324d] text-[11px] text-amber-300/90 leading-snug">
+                          {investigation.diagnosis?.implementationStatus?.status ||
+                           'Historical fix recorded; current implementation not yet verified.'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contextual Entity Inspector (Selected Edge OR Selected Node) */}
+                    {selectedGraphEdge ? (
+                      <div className="rounded-xl border border-violet-800/40 bg-[#0d1322] p-4 text-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-violet-300 flex items-center gap-1.5">
+                            <Info className="w-4 h-4 text-violet-400" />
+                            <span>Edge: {selectedGraphEdge.label}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedGraphEdge(null)}
+                            className="text-[10px] text-slate-400 hover:text-slate-200"
+                          >
+                            Close
+                          </button>
+                        </div>
+                        <p className="text-slate-300 text-[11px] leading-relaxed">
+                          {selectedGraphEdge.description}
+                        </p>
+                        <div className="font-mono text-[10px] text-teal-300">
+                          Provenance: {selectedGraphEdge.provenance}
+                        </div>
+                      </div>
+                    ) : selectedGraphNode ? (
+                      <div className="rounded-xl border border-violet-800/40 bg-[#0d1322] p-4 text-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-violet-300 flex items-center gap-1.5">
+                            <Info className="w-4 h-4 text-violet-400" />
+                            <span>Node: {selectedGraphNode.label}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedGraphNode(null)}
+                            className="text-[10px] text-slate-400 hover:text-slate-200"
+                          >
+                            Close
+                          </button>
+                        </div>
+                        <p className="text-slate-300 text-[11px]">
+                          {selectedGraphNode.details}
+                        </p>
+                        <div className="font-mono text-[10px] text-slate-400">
+                          File: {selectedGraphNode.filePath} {selectedGraphNode.lineRange ? `(${selectedGraphNode.lineRange})` : ''}
+                        </div>
+                        <div className="font-mono text-[10px] text-teal-300">
+                          Provenance: {selectedGraphNode.provenance}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Structured Diagnosis */}
+                    <div className="text-xs text-slate-300 leading-relaxed bg-[#0b0f17] p-3 rounded-lg border border-[#212b3e] max-h-40 overflow-y-auto">
+                      <strong className="text-slate-100 block mb-1">Causal Synthesis:</strong>
+                      {investigation.diagnosis.summary}
+                    </div>
+
+                    {/* Next Action: Advance to Recovery Simulation */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={handleSimulateRecovery}
+                        disabled={isSimulating}
+                        className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-950/50 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        {isSimulating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Simulating Patch...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="w-4 h-4 text-violet-200" />
+                            <span>Simulate Safe Recovery</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           )}

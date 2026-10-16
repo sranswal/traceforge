@@ -9,7 +9,7 @@
  * - Verifies fresh-request memory recall after recording investigation outcome.
  */
 
-import { describe, it, beforeEach, afterEach } from 'node:test';
+import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SYNTHETIC_INCIDENT_FIXTURE,
@@ -1805,8 +1805,131 @@ describe('P0 Production Seed Verification Suite (HTTP 500 Root Cause & Resilient
       assert.equal(data.stack, undefined, 'Must not expose stack trace');
       assert.equal(JSON.stringify(data).includes('SuperSecretPassword123'), false, 'Must not expose password');
     } finally {
+      setClientForTesting(null);
       if (server) await new Promise(resolve => server.close(resolve));
     }
+  });
+});
+
+describe('Graph Quality Sprint: Controlled Experiment, Competing Hypotheses & Provenance Invariants', () => {
+  let server;
+  let baseUrl;
+
+  before(async () => {
+    setClientForTesting(null);
+    await new Promise(resolve => {
+      server = app.listen(0, () => {
+        const { port } = server.address();
+        baseUrl = `http://127.0.0.1:${port}`;
+        resolve();
+      });
+    });
+  });
+
+  after(async () => {
+    setClientForTesting(null);
+    if (server) {
+      server.closeAllConnections?.();
+      await new Promise(resolve => server.close(resolve));
+    }
+  });
+
+  it('1. Controlled Read-Only Graph Experiment: ablating causal edge verifyToken -> acquireTokenLock eliminates root cause without mutating data', async () => {
+    const reportPayload = {
+      repoFullName: SYNTHETIC_INCIDENT_FIXTURE.repository.fullName,
+      title: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.title,
+      symptoms: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.symptoms,
+      entryPoint: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.entryPoint,
+      suspectedCommit: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.suspectedCommit,
+      suspectedComponent: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.suspectedComponent
+    };
+
+    // 1. Run controlled experiment with ablateCausalEdge
+    const expRes = await fetch(`${baseUrl}/api/incident/investigate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        report: reportPayload,
+        analysis: SYNTHETIC_INCIDENT_FIXTURE,
+        experiment: {
+          ablateCausalEdge: true,
+          caller: 'verifyToken',
+          callee: 'acquireTokenLock'
+        }
+      })
+    });
+
+    assert.equal(expRes.status, 200);
+    const expData = await expRes.json();
+
+    assert.ok(expData.experiment, 'Experiment metadata must be present');
+    assert.equal(expData.experiment.active, true);
+    assert.notEqual(expData.diagnosis.confidence, 'HIGH', 'Confidence must drop from HIGH when causal edge is cut');
+    assert.notEqual(expData.diagnosis.rootCauseSymbol, 'acquireTokenLock', 'Root cause acquireTokenLock must be unreachable');
+    assert.equal(expData.connectedEvidence.connectedFiles.includes('services/tokenBucket.js'), false, 'tokenBucket.js must be disconnected');
+    assert.equal(expData.diagnosis.historicalFix, null, 'Historical fix precedent must be disconnected');
+  });
+
+  it('2. Baseline Restoration: running investigation without experiment restores intact causal path with HIGH confidence', async () => {
+    const reportPayload = {
+      repoFullName: SYNTHETIC_INCIDENT_FIXTURE.repository.fullName,
+      title: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.title,
+      symptoms: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.symptoms,
+      entryPoint: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.entryPoint,
+      suspectedCommit: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.suspectedCommit,
+      suspectedComponent: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.suspectedComponent
+    };
+
+    const res = await fetch(`${baseUrl}/api/incident/investigate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        report: reportPayload,
+        analysis: SYNTHETIC_INCIDENT_FIXTURE
+      })
+    });
+
+    assert.equal(res.status, 200);
+    const data = await res.json();
+
+    assert.equal(data.experiment, null, 'Experiment must be null during baseline investigation');
+    assert.equal(data.diagnosis.confidence, 'HIGH', 'Confidence must be HIGH in intact graph');
+    assert.equal(data.diagnosis.rootCauseSymbol, 'acquireTokenLock');
+    assert.equal(data.diagnosis.rootCauseFile, 'services/tokenBucket.js');
+  });
+
+  it('3. Competing Hypotheses: decoy is correctly identified and distinguished from root cause and commit roles', async () => {
+    const reportPayload = {
+      repoFullName: SYNTHETIC_INCIDENT_FIXTURE.repository.fullName,
+      title: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.title,
+      symptoms: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.symptoms,
+      entryPoint: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.entryPoint,
+      suspectedCommit: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.suspectedCommit,
+      suspectedComponent: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.suspectedComponent
+    };
+
+    const res = await fetch(`${baseUrl}/api/incident/investigate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        report: reportPayload,
+        analysis: SYNTHETIC_INCIDENT_FIXTURE
+      })
+    });
+
+    const data = await res.json();
+
+    // Decoy verification
+    assert.equal(data.keywordBaseline.topSuspectFile, 'services/rateLimiter.js');
+    assert.ok(data.keywordBaseline.limitation.includes('Failed to traverse call edges'));
+
+    // Suspected introducing commit vs historical remediation commit
+    assert.equal(data.diagnosis.suspectedIntroducingCommit.shortSha, '8f2a1b9');
+    assert.equal(data.diagnosis.suspectedIntroducingCommit.roleLabel, 'Suspected Introducing Change');
+
+    assert.equal(data.diagnosis.historicalFix.shortSha, '7e1d4c2');
+    assert.equal(data.diagnosis.historicalFix.roleLabel, 'Historical Fix Commit');
+    assert.notEqual(data.diagnosis.suspectedIntroducingCommit.shortSha, data.diagnosis.historicalFix.shortSha);
   });
 });
 
