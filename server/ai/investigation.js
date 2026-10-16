@@ -25,7 +25,7 @@ import { GraphIds, normalizePath } from '../memory/schema.js';
  * - Symptom: Payment gateway returns 504 Gateway Timeout on /api/pay.
  * - Decoy Change: Commit 8f2a1b9 ("Refactor rate limit cache in services/rateLimiter.js").
  * - Keyword baseline falsely accuses services/rateLimiter.js due to high word overlap ("rate limit", "504", "timeout").
- * - True Root Cause (in graph): /api/pay calls verifyToken (services/auth.js) which calls acquireTokenLock
+ * - Target Root-Cause Hypothesis (in graph): /api/pay calls verifyToken (services/auth.js) which calls acquireTokenLock
  *   (services/tokenBucket.js). Commit 8f2a1b9 also modified acquireTokenLock to use a synchronous blocking
  *   mutex, triggering a lock starvation cascade previously documented in Bug lock-starvation-01!
  */
@@ -229,6 +229,7 @@ export function traceConnectedGraphEvidence(report = {}, graphContext = {}) {
       type: 'ENTRYPOINT_SYMBOL',
       label: `Route Handler \`${s.name}\``,
       filePath: s.filePath,
+      calleeSymbol: s.name,
       symbolName: s.name,
       lineRange: s.startLine && s.endLine ? `L${s.startLine}-L${s.endLine}` : 'L1-L1',
       provenance: 'Static AST Parser',
@@ -245,6 +246,12 @@ export function traceConnectedGraphEvidence(report = {}, graphContext = {}) {
           step: stepIndex++,
           type: 'SYMBOL_CALLS_SYMBOL',
           label: `Calls \`${targetSym.name}\` in \`${targetSym.filePath}\``,
+          callerSymbol: s.name,
+          callerFile: s.filePath,
+          sourceSymbol: s.name,
+          sourceFile: s.filePath,
+          calleeSymbol: targetSym.name,
+          calleeFile: targetSym.filePath,
           filePath: targetSym.filePath,
           symbolName: targetSym.name,
           lineRange: targetSym.startLine && targetSym.endLine ? `L${targetSym.startLine}-L${targetSym.endLine}` : 'L1-L1',
@@ -262,6 +269,12 @@ export function traceConnectedGraphEvidence(report = {}, graphContext = {}) {
               step: stepIndex++,
               type: 'SYMBOL_CALLS_SYMBOL',
               label: `Downstream Call: \`${targetSym.name}\` -> \`${subTarget.name}\` in \`${subTarget.filePath}\``,
+              callerSymbol: targetSym.name,
+              callerFile: targetSym.filePath,
+              sourceSymbol: targetSym.name,
+              sourceFile: targetSym.filePath,
+              calleeSymbol: subTarget.name,
+              calleeFile: subTarget.filePath,
               filePath: subTarget.filePath,
               symbolName: subTarget.name,
               lineRange: subTarget.startLine && subTarget.endLine ? `L${subTarget.startLine}-L${subTarget.endLine}` : 'L1-L1',

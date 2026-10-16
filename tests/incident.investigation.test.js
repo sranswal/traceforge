@@ -22,7 +22,7 @@ import {
 } from '../server/ai/investigation.js';
 import app from '../server/index.js';
 import { getRepositoryOverview, retrieveGraphContext } from '../server/memory/graphProvider.js';
-import { setClientForTesting } from '../server/db/falkordb.js';
+import { setClientForTesting, closeClient } from '../server/db/falkordb.js';
 import { resetFalkorDBSchemaCacheForTesting } from '../server/memory/falkordbSchema.js';
 import { aiProvider } from '../server/ai/provider.js';
 
@@ -1832,6 +1832,8 @@ describe('Graph Quality Sprint: Controlled Experiment, Competing Hypotheses & Pr
       server.closeAllConnections?.();
       await new Promise(resolve => server.close(resolve));
     }
+    await closeClient();
+    setTimeout(() => process.exit(0), 100);
   });
 
   it('1. Controlled Read-Only Graph Experiment: ablating causal edge verifyToken -> acquireTokenLock eliminates root cause without mutating data', async () => {

@@ -108,7 +108,7 @@ export default function CausalGraphCanvas({
         details: 'Intermediate call hop in execution pipeline. Validates client authorization header and requests token allocation.',
         badge: 'Inferred Hop'
       },
-      // 3. True Root Cause: acquireTokenLock in tokenBucket.js
+      // 3. Leading Root-Cause Hypothesis: acquireTokenLock in tokenBucket.js
       {
         id: 'node-root-cause',
         label: isAblated ? 'acquireTokenLock (Severed)' : rootCauseSymbol,
@@ -116,8 +116,8 @@ export default function CausalGraphCanvas({
         lineRange: 'L54-L88',
         type: 'root_cause',
         evidenceCategory: isAblated ? 'uncertain_information' : 'suspected_change',
-        role: isAblated ? 'Disconnected Symbol (Ablated)' : 'True Root Cause (Lock Starvation)',
-        category: isAblated ? 'Severed Target' : 'Suspected Root Cause',
+        role: isAblated ? 'Disconnected Symbol (Ablated)' : 'Leading Root-Cause Hypothesis (Lock Starvation)',
+        category: isAblated ? 'Severed Target' : 'Leading Root-Cause Hypothesis',
         x: 495,
         y: 220,
         radius: 30,
@@ -128,7 +128,7 @@ export default function CausalGraphCanvas({
         details: isAblated 
           ? 'Controlled experiment severed the call edge verifyToken -> acquireTokenLock. This symbol is disconnected from the entrypoint.' 
           : 'Acquires blocking thread mutex without timeout, causing complete thread pool starvation under high concurrency.',
-        badge: isAblated ? 'Unreachable' : 'Root Cause',
+        badge: isAblated ? 'Unreachable' : 'Suspected Target',
         pulse: !isAblated
       },
       // 4. Suspect Refactor Commit (Suspected Change)
@@ -778,7 +778,7 @@ export default function CausalGraphCanvas({
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-              <span>Suspected Root Cause</span>
+              <span>Leading Root-Cause Hypothesis</span>
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
@@ -891,7 +891,7 @@ export default function CausalGraphCanvas({
             )}
             {activeSelectedNode.type === 'root_cause' && (
               <span className="text-[10px] font-mono px-2 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/40 font-semibold">
-                {isAblated ? 'Ablated from Traversal' : 'Confirmed Root Cause'}
+                {isAblated ? 'Ablated from Traversal' : 'Graph-Supported Candidate'}
               </span>
             )}
             {activeSelectedNode.type === 'commit' && (

@@ -222,7 +222,7 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
-                <span><strong className="text-slate-900 dark:text-slate-100">Root Cause:</strong> <code>acquireTokenLock</code> in <code>tokenBucket.js</code></span>
+                <span><strong className="text-slate-900 dark:text-slate-100">Suspected Target:</strong> <code>acquireTokenLock</code> in <code>tokenBucket.js</code></span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />

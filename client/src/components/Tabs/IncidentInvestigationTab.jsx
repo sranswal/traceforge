@@ -665,7 +665,7 @@ export default function IncidentInvestigationTab({
                       </div>
 
                       <h3 className="font-bold text-slate-900 dark:text-slate-100 text-xs">
-                        True Root Cause: <code className="text-emerald-600 dark:text-emerald-400">{investigation.diagnosis.rootCauseFile}</code>
+                        Leading Root-Cause Hypothesis: <code className="text-emerald-600 dark:text-emerald-400">{investigation.diagnosis.rootCauseFile}</code>
                         <span className="ml-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">({investigation.diagnosis.rootCauseSymbol})</span>
                       </h3>
 
@@ -850,7 +850,7 @@ export default function IncidentInvestigationTab({
                         Before Ablation (Intact Graph)
                       </div>
                       <div className="text-slate-200 font-semibold">
-                        Root Cause: <code className="text-emerald-400">acquireTokenLock</code> in <span className="text-slate-300">services/tokenBucket.js</span>
+                        Hypothesis: <code className="text-emerald-400">acquireTokenLock</code> in <span className="text-slate-300">services/tokenBucket.js</span>
                       </div>
                       <div className="text-slate-400 text-[10px]">
                         Confidence: <strong className="text-emerald-400">HIGH</strong> · Multi-hop traversal & commit verified
@@ -862,7 +862,7 @@ export default function IncidentInvestigationTab({
                         After Ablation (Severed Edge)
                       </div>
                       <div className="text-slate-200 font-semibold">
-                        Root Cause: <code className="text-rose-400">unknown</code> (Target Unreachable)
+                        Hypothesis: <code className="text-rose-400">unknown</code> (Target Unreachable)
                       </div>
                       <div className="text-rose-400 text-[10px]">
                         Confidence: <strong>INSUFFICIENT_EVIDENCE</strong> · Refuses ungrounded guesswork
@@ -952,14 +952,14 @@ export default function IncidentInvestigationTab({
                         </div>
                       </div>
 
-                      {/* Candidate B: True Root Cause */}
+                      {/* Candidate B: Leading Root-Cause Hypothesis */}
                       <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#0a0e17] border border-rose-200 dark:border-rose-900/60 space-y-2.5 transition-colors">
                         <div className="flex items-center justify-between">
                           <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800/60">
-                            Candidate B · True Root Cause
+                            Candidate B · Leading Root-Cause Hypothesis
                           </span>
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/50 font-bold">
-                            {investigation?.experiment?.active ? 'ABLATED' : 'CONFIRMED'}
+                            {investigation?.experiment?.active ? 'ABLATED' : 'GRAPH-SUPPORTED'}
                           </span>
                         </div>
 
@@ -1054,170 +1054,82 @@ export default function IncidentInvestigationTab({
                   </div>
                 </div>
 
-                {/* Side Panel: Root Cause Candidate & Action Card (~40% width) */}
+                {/* Side Panel: Forensic Evidence & Action Card (~40% width) */}
                 <div className="lg:col-span-5 xl:col-span-4 space-y-4">
-                  {/* Candidate Diagnosis Summary Card */}
-                  <div className="rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#101624] p-5 shadow-lg space-y-4 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
-                        investigation.diagnosis.confidence === 'INSUFFICIENT_EVIDENCE'
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/40'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/40'
-                      }`}>
-                        {investigation.diagnosis.confidence === 'INSUFFICIENT_EVIDENCE' ? 'Insufficient Evidence' : 'Root Cause Isolated'}
-                      </span>
-                      <span className={`text-xs font-mono font-semibold ${
-                        investigation.diagnosis.confidence === 'HIGH' 
-                          ? 'text-emerald-600 dark:text-emerald-400' 
-                          : investigation.diagnosis.confidence === 'MEDIUM' 
-                            ? 'text-teal-600 dark:text-teal-400' 
-                            : 'text-amber-600 dark:text-amber-400'
-                      }`}>
-                        Confidence: {investigation.diagnosis.confidence}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                        <ShieldAlert className="w-5 h-5 text-rose-500 dark:text-rose-400" />
-                        <span>{investigation.diagnosis.rootCauseSymbol}</span>
-                      </h3>
-                      <div className="font-mono text-xs text-rose-600 dark:text-rose-300 mt-0.5">
-                        {investigation.diagnosis.rootCauseFile}
-                      </div>
-                    </div>
-
-                    {/* Explicit Provenance: Suspected Change vs Historical Fix vs Current Status */}
-                    <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-[#212b3e] text-xs space-y-3 transition-colors">
-                      {/* 1. Suspected Introducing Change */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-slate-800 dark:text-slate-300">
-                          <span className="font-semibold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
-                            <GitCommit className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                            <span>Suspected Introducing Change:</span>
-                          </span>
-                          <span className="font-mono text-amber-700 dark:text-amber-300 font-semibold">
-                            {investigation.diagnosis?.suspectedIntroducingCommit?.shortSha ||
-                             investigation.connectedEvidence?.matchingCommit?.shortSha ||
-                             investigation.suspectedCommit?.slice(0, 7) ||
-                             'None'}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-400 pl-5">
-                          {investigation.diagnosis?.suspectedIntroducingCommit?.message ||
-                           investigation.connectedEvidence?.matchingCommit?.message ||
-                           'Refactor commit associated with regression'}
-                        </div>
-                      </div>
-
-                      {/* 2. Historical Fix Precedent */}
-                      <div className="space-y-1 pt-2 border-t border-slate-200 dark:border-[#1a2334]">
-                        <div className="flex items-center justify-between text-slate-800 dark:text-slate-300">
-                          <span className="font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-                            <span>Historical Fix Commit:</span>
-                          </span>
-                          <span className="font-mono text-emerald-700 dark:text-emerald-300 font-semibold">
-                            {investigation.diagnosis?.historicalFix?.commitShortSha ||
-                             (investigation.connectedEvidence?.priorFixMatch?.commitSha ? investigation.connectedEvidence.priorFixMatch.commitSha.slice(0, 7) : 'None')}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-400 pl-5">
-                          {investigation.diagnosis?.historicalFix?.summary ||
-                           investigation.connectedEvidence?.priorFixMatch?.fixSummary ||
-                           'Known institutional remediation'}
-                        </div>
-                      </div>
-
-                      {/* 3. Current Implementation Status */}
-                      <div className="pt-2 border-t border-slate-200 dark:border-[#1a2334]">
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                          Current Implementation Status:
+                  {/* Contextual Entity Inspector (Selected Edge OR Selected Node) */}
+                  {selectedGraphEdge ? (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50/70 dark:border-violet-800/40 dark:bg-[#0d1322] p-4 text-xs space-y-2 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
+                          <Info className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                          <span>Edge: {selectedGraphEdge.label}</span>
                         </span>
-                        <div className="p-2 rounded bg-amber-50/80 border border-amber-200 text-[11px] text-amber-900 dark:bg-[#101827] dark:border-[#25324d] dark:text-amber-300/90 leading-snug">
-                          {investigation.diagnosis?.implementationStatus?.status ||
-                           'Historical fix recorded; current implementation not yet verified.'}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedGraphEdge(null)}
+                          className="text-[10px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
+                        >
+                          Close
+                        </button>
+                      </div>
+                      <p className="text-slate-700 dark:text-slate-300 text-[11px] leading-relaxed">
+                        {selectedGraphEdge.description}
+                      </p>
+                      <div className="font-mono text-[10px] text-teal-700 dark:text-teal-300">
+                        Provenance: {selectedGraphEdge.provenance}
                       </div>
                     </div>
-
-                    {/* Contextual Entity Inspector (Selected Edge OR Selected Node) */}
-                    {selectedGraphEdge ? (
-                      <div className="rounded-xl border border-violet-200 bg-violet-50/70 dark:border-violet-800/40 dark:bg-[#0d1322] p-4 text-xs space-y-2 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
-                            <Info className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                            <span>Edge: {selectedGraphEdge.label}</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedGraphEdge(null)}
-                            className="text-[10px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
-                          >
-                            Close
-                          </button>
-                        </div>
-                        <p className="text-slate-700 dark:text-slate-300 text-[11px] leading-relaxed">
-                          {selectedGraphEdge.description}
-                        </p>
-                        <div className="font-mono text-[10px] text-teal-700 dark:text-teal-300">
-                          Provenance: {selectedGraphEdge.provenance}
-                        </div>
+                  ) : selectedGraphNode ? (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50/70 dark:border-violet-800/40 dark:bg-[#0d1322] p-4 text-xs space-y-2 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
+                          <Info className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                          <span>Node: {selectedGraphNode.label}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedGraphNode(null)}
+                          className="text-[10px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
+                        >
+                          Close
+                        </button>
                       </div>
-                    ) : selectedGraphNode ? (
-                      <div className="rounded-xl border border-violet-200 bg-violet-50/70 dark:border-violet-800/40 dark:bg-[#0d1322] p-4 text-xs space-y-2 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-violet-700 dark:text-violet-300 flex items-center gap-1.5">
-                            <Info className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                            <span>Node: {selectedGraphNode.label}</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedGraphNode(null)}
-                            className="text-[10px] text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
-                          >
-                            Close
-                          </button>
-                        </div>
-                        <p className="text-slate-700 dark:text-slate-300 text-[11px]">
-                          {selectedGraphNode.details}
-                        </p>
-                        <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
-                          File: {selectedGraphNode.filePath} {selectedGraphNode.lineRange ? `(${selectedGraphNode.lineRange})` : ''}
-                        </div>
-                        <div className="font-mono text-[10px] text-teal-700 dark:text-teal-300">
-                          Provenance: {selectedGraphNode.provenance}
-                        </div>
+                      <p className="text-slate-700 dark:text-slate-300 text-[11px]">
+                        {selectedGraphNode.details}
+                      </p>
+                      <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                        File: {selectedGraphNode.filePath} {selectedGraphNode.lineRange ? `(${selectedGraphNode.lineRange})` : ''}
                       </div>
-                    ) : null}
-
-                    {/* Semantic Causal Synthesis Panel */}
-                    <div className="space-y-2 pt-1">
-                      <CausalSynthesisPanel investigation={investigation} />
+                      <div className="font-mono text-[10px] text-teal-700 dark:text-teal-300">
+                        Provenance: {selectedGraphNode.provenance}
+                      </div>
                     </div>
+                  ) : null}
 
-                    {/* Next Action: Advance to Recovery Simulation */}
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={handleSimulateRecovery}
-                        disabled={isSimulating}
-                        className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-950/30 transition-all cursor-pointer disabled:opacity-50"
-                      >
-                        {isSimulating ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Simulating Patch...</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-4 h-4 text-violet-200" />
-                            <span>Simulate Safe Recovery</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
-                    </div>
+                  {/* Semantic Causal Synthesis Panel */}
+                  <CausalSynthesisPanel investigation={investigation} />
+
+                  {/* Next Action: Advance to Recovery Simulation */}
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#101624] shadow-xs">
+                    <button
+                      type="button"
+                      onClick={handleSimulateRecovery}
+                      disabled={isSimulating}
+                      className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-950/30 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {isSimulating ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Simulating Patch...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-4 h-4 text-violet-200" />
+                          <span>Simulate Safe Recovery</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>

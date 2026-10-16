@@ -1600,6 +1600,323 @@ describe('Causal Synthesis Evidence Presentation Adapter & Sanitization Suite', 
       'CausalGraphCanvas must not contain raw uppercase KEYWORD MATCH label'
     );
   });
+
+  it('6. buildVerifiedExecutionPath strictly excludes rejected decoys (e.g. checkRateLimit) from the verified path', async () => {
+    const { adaptCausalSynthesis, buildVerifiedExecutionPath } = await import('../client/src/utils/evidenceAdapter.js');
+
+    const investigationWithDecoy = {
+      entryPoint: 'server/routes/pay.js',
+      connectedEvidence: {
+        evidenceChain: [
+          {
+            step: 1,
+            type: 'ENTRYPOINT_SYMBOL',
+            label: 'Route Handler `handlePaymentRequest`',
+            filePath: 'server/routes/pay.js',
+            symbolName: 'handlePaymentRequest',
+            lineRange: 'L12-L45',
+            provenance: 'Static AST Parser'
+          },
+          {
+            step: 2,
+            type: 'SYMBOL_CALLS_SYMBOL',
+            label: 'Calls `checkRateLimit` in `services/rateLimiter.js`',
+            filePath: 'services/rateLimiter.js',
+            callerSymbol: 'handlePaymentRequest',
+            calleeSymbol: 'checkRateLimit',
+            symbolName: 'checkRateLimit',
+            lineRange: 'L10-L25',
+            provenance: 'Call Graph Traversal (1-hop)'
+          },
+          {
+            step: 3,
+            type: 'SYMBOL_CALLS_SYMBOL',
+            label: 'Calls `verifyToken` in `services/auth.js`',
+            filePath: 'services/auth.js',
+            callerSymbol: 'handlePaymentRequest',
+            calleeSymbol: 'verifyToken',
+            symbolName: 'verifyToken',
+            lineRange: 'L15-L38',
+            provenance: 'Call Graph Traversal (1-hop)'
+          },
+          {
+            step: 4,
+            type: 'SYMBOL_CALLS_SYMBOL',
+            label: 'Calls `acquireTokenLock` in `services/tokenBucket.js`',
+            filePath: 'services/tokenBucket.js',
+            callerSymbol: 'verifyToken',
+            calleeSymbol: 'acquireTokenLock',
+            symbolName: 'acquireTokenLock',
+            lineRange: 'L54-L88',
+            provenance: 'Call Graph Traversal (2-hop)'
+          }
+        ],
+        callers: [
+          { caller: 'handlePaymentRequest', callee: 'checkRateLimit', callerFile: 'server/routes/pay.js', calleeFile: 'services/rateLimiter.js' },
+          { caller: 'handlePaymentRequest', callee: 'verifyToken', callerFile: 'server/routes/pay.js', calleeFile: 'services/auth.js' },
+          { caller: 'verifyToken', callee: 'acquireTokenLock', callerFile: 'services/auth.js', calleeFile: 'services/tokenBucket.js' }
+        ]
+      },
+      keywordBaseline: {
+        suspectedRootCause: 'checkRateLimit',
+        topSuspectFile: 'services/rateLimiter.js',
+        reason: 'Lexical keyword search match on rate limit'
+      },
+      diagnosis: {
+        rootCauseFile: 'services/tokenBucket.js',
+        rootCauseSymbol: 'acquireTokenLock',
+        confidence: 'HIGH',
+        candidateRankings: [
+          {
+            filePath: 'services/tokenBucket.js',
+            symbolName: 'acquireTokenLock',
+            confidence: 'HIGH'
+          },
+          {
+            filePath: 'services/rateLimiter.js',
+            symbolName: 'checkRateLimit',
+            confidence: 'LOW',
+            reasons: ['Lexical keyword baseline decoy']
+          }
+        ]
+      }
+    };
+
+    const adapted = adaptCausalSynthesis(investigationWithDecoy);
+    assert.equal(adapted.isValid, true);
+
+    // Verified path MUST only contain the directed call edges from entrypoint to acquireTokenLock
+    const pathSymbols = adapted.observedExecutionPath.map(p => p.symbolName);
+    assert.deepEqual(pathSymbols, ['handlePaymentRequest', 'verifyToken', 'acquireTokenLock']);
+
+    // checkRateLimit MUST NOT be in the verified path
+    assert.equal(pathSymbols.includes('checkRateLimit'), false, 'Rejected decoy checkRateLimit must not appear in verified path');
+
+    // checkRateLimit MUST be segregated into rejectedAlternatives
+    assert.ok(adapted.rejectedAlternatives.length >= 1);
+    const decoyAlternative = adapted.rejectedAlternatives.find(a => a.symbolName === 'checkRateLimit');
+    assert.ok(decoyAlternative, 'Decoy candidate checkRateLimit must appear in rejectedAlternatives');
+    assert.equal(decoyAlternative.filePath, 'services/rateLimiter.js');
+    assert.ok(decoyAlternative.roleLabel.includes('Rejected'));
+  });
+
+  it('7. Consecutive pairs in observed execution path must be validated by real call edges', async () => {
+    const { buildVerifiedExecutionPath } = await import('../client/src/utils/evidenceAdapter.js');
+
+    const validEdges = [
+      { callerSymbol: 'handlePaymentRequest', calleeSymbol: 'verifyToken', calleeFile: 'services/auth.js' },
+      { callerSymbol: 'verifyToken', calleeSymbol: 'acquireTokenLock', calleeFile: 'services/tokenBucket.js' }
+    ];
+
+    const path = buildVerifiedExecutionPath({
+      entryPoint: 'server/routes/pay.js',
+      targetSymbol: 'acquireTokenLock',
+      evidenceChain: [
+        { type: 'ENTRYPOINT_SYMBOL', symbolName: 'handlePaymentRequest', filePath: 'server/routes/pay.js' },
+        { type: 'SYMBOL_CALLS_SYMBOL', callerSymbol: 'handlePaymentRequest', calleeSymbol: 'verifyToken', filePath: 'services/auth.js' },
+        { type: 'SYMBOL_CALLS_SYMBOL', callerSymbol: 'verifyToken', calleeSymbol: 'acquireTokenLock', filePath: 'services/tokenBucket.js' }
+      ],
+      callers: [
+        { caller: 'handlePaymentRequest', callee: 'verifyToken' },
+        { caller: 'verifyToken', callee: 'acquireTokenLock' }
+      ]
+    });
+
+    assert.equal(path.length, 3);
+    for (let i = 0; i < path.length - 1; i++) {
+      const caller = path[i].symbolName;
+      const callee = path[i + 1].symbolName;
+      const edgeExists = validEdges.some(e => e.callerSymbol === caller && e.calleeSymbol === callee);
+      assert.ok(edgeExists, `Consecutive pair ${caller} -> ${callee} must be backed by an actual directed call edge`);
+    }
+  });
+
+  it('8. Audits certainty language across UI files - ensures no unsupported absolute claims', async () => {
+    const fs = await import('fs');
+
+    const filesToAudit = [
+      './client/src/components/Tabs/IncidentInvestigationTab.jsx',
+      './client/src/components/Graph/CausalGraphCanvas.jsx',
+      './client/src/components/Investigation/CausalSynthesisPanel.jsx',
+      './client/src/components/RepoInput.jsx'
+    ];
+
+    for (const file of filesToAudit) {
+      const content = fs.readFileSync(file, 'utf8');
+      assert.equal(
+        content.includes('True Root Cause'),
+        false,
+        `File ${file} must not contain unsupported label 'True Root Cause'`
+      );
+      assert.equal(
+        content.includes('Confirmed Root Cause'),
+        false,
+        `File ${file} must not contain unsupported label 'Confirmed Root Cause'`
+      );
+    }
+
+    const panelContent = fs.readFileSync('./client/src/components/Investigation/CausalSynthesisPanel.jsx', 'utf8');
+    assert.ok(
+      panelContent.includes('Leading Root-Cause Hypothesis'),
+      'CausalSynthesisPanel must use qualified label Leading Root-Cause Hypothesis'
+    );
+    assert.ok(
+      panelContent.includes('Rejected Alternatives & Decoy Candidates'),
+      'CausalSynthesisPanel must contain dedicated Rejected Alternatives section'
+    );
+
+    const canvasContent = fs.readFileSync('./client/src/components/Graph/CausalGraphCanvas.jsx', 'utf8');
+    assert.ok(
+      canvasContent.includes('Graph-Supported Candidate'),
+      'CausalGraphCanvas inspector must use Graph-Supported Candidate instead of Confirmed Root Cause'
+    );
+  });
+
+  it('9. Regression: Observed Execution Path includes intermediate nodes, consecutive edges connect adjacent nodes, and verified nodes are excluded from rejected alternatives', async () => {
+    const { adaptCausalSynthesis, buildVerifiedExecutionPath } = await import('../client/src/utils/evidenceAdapter.js');
+    const { SYNTHETIC_INCIDENT_FIXTURE, runIncidentInvestigation } = await import('../server/ai/investigation.js');
+
+    const reportPayload = {
+      repoFullName: SYNTHETIC_INCIDENT_FIXTURE.repository.fullName,
+      title: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.title,
+      symptoms: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.symptoms,
+      entryPoint: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.entryPoint,
+      suspectedCommit: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.suspectedCommit,
+      suspectedComponent: SYNTHETIC_INCIDENT_FIXTURE.incidentReport.suspectedComponent
+    };
+
+    const mockGraphContext = {
+      available: true,
+      hasEvidence: true,
+      symbols: [
+        {
+          id: 'acme/payment-gateway::symbol::server/routes/pay.js::function::handlePaymentRequest',
+          name: 'handlePaymentRequest',
+          kind: 'Function',
+          filePath: 'server/routes/pay.js',
+          startLine: 3,
+          endLine: 7,
+          callsSymbols: ['checkRateLimit', 'verifyToken']
+        },
+        {
+          id: 'acme/payment-gateway::symbol::services/rateLimiter.js::function::checkRateLimit',
+          name: 'checkRateLimit',
+          kind: 'Function',
+          filePath: 'services/rateLimiter.js',
+          startLine: 2,
+          endLine: 5,
+          callsSymbols: []
+        },
+        {
+          id: 'acme/payment-gateway::symbol::services/auth.js::function::verifyToken',
+          name: 'verifyToken',
+          kind: 'Function',
+          filePath: 'services/auth.js',
+          startLine: 2,
+          endLine: 5,
+          callsSymbols: ['acquireTokenLock']
+        },
+        {
+          id: 'acme/payment-gateway::symbol::services/tokenBucket.js::function::acquireTokenLock',
+          name: 'acquireTokenLock',
+          kind: 'Function',
+          filePath: 'services/tokenBucket.js',
+          startLine: 2,
+          endLine: 6,
+          callsSymbols: ['isLocked']
+        }
+      ],
+      recentCommits: [
+        {
+          sha: '8f2a1b9c0d1e2f3a',
+          shortSha: '8f2a1b9',
+          role: 'suspected_refactor',
+          message: 'Refactor rate limit cache and token bucket mutex',
+          author: 'dev-charlie',
+          date: '2026-10-14T14:30:00Z',
+          changedFiles: ['services/rateLimiter.js', 'services/tokenBucket.js']
+        }
+      ],
+      bugsAndFixes: [
+        {
+          bugId: 'acme/payment-gateway::bug::lock-starvation-01',
+          title: 'Worker Thread Lock Starvation under High Concurrency',
+          description: 'Token bucket mutex deadlocks worker threads when downstream auth latency spikes, resulting in HTTP 504 timeouts.',
+          severity: 'critical',
+          status: 'resolved',
+          symptoms: 'HTTP 504 Gateway Timeout',
+          filePath: 'services/tokenBucket.js',
+          fixSummary: 'Enforce non-blocking tryAcquire with circuit breaker timeout',
+          fixDescription: 'Replaced unbounded while loop with bounded 250ms timeout in acquireTokenLock.',
+          commitSha: '7e1d4c2b9a0f',
+          commitShortSha: '7e1d4c2',
+          commitRole: 'historical_fix'
+        }
+      ]
+    };
+
+    const investigationResult = await runIncidentInvestigation(reportPayload, SYNTHETIC_INCIDENT_FIXTURE, {
+      graphContext: mockGraphContext
+    });
+
+    const adapted = adaptCausalSynthesis(investigationResult);
+    assert.equal(adapted.isValid, true);
+
+    const path = adapted.observedExecutionPath;
+    const pathSymbols = path.map(p => p.symbolName);
+
+    // 1. Every node in the verified directed path appears in the displayed path in the correct order
+    assert.deepEqual(
+      pathSymbols,
+      ['handlePaymentRequest', 'verifyToken', 'acquireTokenLock'],
+      'Every node on the directed causal path must appear in strict order without skipping intermediate nodes'
+    );
+
+    // 2. The path length and rendered step count agree
+    assert.equal(path.length, 3, 'Path length must equal 3');
+    assert.deepEqual(path.map(p => p.stepNumber), [1, 2, 3], 'Rendered step counts must strictly agree with path length');
+
+    // 3. Every consecutive pair has a matching directed call edge
+    const callers = investigationResult.connectedEvidence.callers;
+    for (let i = 0; i < path.length - 1; i++) {
+      const callerSym = path[i].symbolName;
+      const calleeSym = path[i + 1].symbolName;
+      const matchingEdge = callers.find(c => c.caller === callerSym && c.callee === calleeSym);
+      assert.ok(
+        matchingEdge,
+        `Consecutive pair (${callerSym} -> ${calleeSym}) must be backed by an actual directed call edge in graph callers`
+      );
+
+      // Verify that the step description explicitly connects the preceding and following nodes
+      const nextStep = path[i + 1];
+      assert.ok(
+        nextStep.description.includes(callerSym) && nextStep.description.includes(calleeSym),
+        `Step ${nextStep.stepNumber} description must explicitly connect preceding (${callerSym}) and following (${calleeSym}) nodes`
+      );
+    }
+
+    // 4. No verified path node appears in the rejected-alternatives list for the same path
+    const rejectedSymbols = adapted.rejectedAlternatives.map(r => r.symbolName);
+    for (const verifiedSym of pathSymbols) {
+      assert.equal(
+        rejectedSymbols.includes(verifiedSym),
+        false,
+        `Verified path node "${verifiedSym}" must NEVER appear in the rejected-alternatives list`
+      );
+    }
+
+    // 5. checkRateLimit remains a rejected alternative in the synthetic fixture
+    assert.ok(
+      rejectedSymbols.includes('checkRateLimit'),
+      'Dead-end decoy checkRateLimit must remain classified as a rejected alternative'
+    );
+    const checkRateLimitEntry = adapted.rejectedAlternatives.find(r => r.symbolName === 'checkRateLimit');
+    assert.equal(checkRateLimitEntry.filePath, 'services/rateLimiter.js');
+    assert.ok(
+      checkRateLimitEntry.roleLabel.includes('Rejected'),
+      'checkRateLimit must carry a Rejected role label'
+    );
+  });
 });
 
 
