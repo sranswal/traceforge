@@ -1,4 +1,5 @@
 import { parseGitHubUrl, fetchGitHubRepoData } from './github.js';
+import { resolveProvider } from '../providers/registry.js';
 import { detectTechnologies } from './techDetector.js';
 import { detectFrameworks } from './frameworkDetector.js';
 import { analyzeStructure } from './structureAnalyzer.js';
@@ -10,9 +11,21 @@ import { ingestRepositoryToGraph } from '../memory/graphProvider.js';
 export async function analyzeRepository(repoUrl, options = {}) {
   const startTime = Date.now();
 
-  // 1. Ingestion Phase
-  const parsed = parseGitHubUrl(repoUrl);
-  const scan = await fetchGitHubRepoData(parsed, options.token);
+  // 1. Ingestion Phase via Provider Adapter
+  const providerAdapter = options.providerAdapter || resolveProvider(repoUrl);
+  let parsed;
+  try {
+    parsed = providerAdapter.parseUrl(repoUrl);
+  } catch (err) {
+    parsed = parseGitHubUrl(repoUrl);
+  }
+
+  let scan;
+  if (typeof providerAdapter.fetchFullScan === 'function') {
+    scan = await providerAdapter.fetchFullScan(parsed, options);
+  } else {
+    scan = await fetchGitHubRepoData(parsed, options.token);
+  }
 
   // 2. Static & Heuristic Analysis Phase
   const techStack = detectTechnologies(scan);
@@ -25,7 +38,17 @@ export async function analyzeRepository(repoUrl, options = {}) {
   const durationMs = Date.now() - startTime;
 
   const analysisResult = {
-    repository: scan.repoInfo,
+    repository: {
+      ...scan.repoInfo,
+      provider: scan.providerData?.provider || providerAdapter.name || 'github'
+    },
+    providerData: scan.providerData || {
+      provider: providerAdapter.name || 'github',
+      branches: { status: 'empty', data: [], error: null },
+      commits: { status: 'empty', data: [], error: null },
+      issues: { status: 'empty', data: [], error: null },
+      pullRequests: { status: 'empty', data: [], error: null }
+    },
     metrics: {
       totalFiles: scan.totalFiles,
       totalDirectories: scan.totalDirectories,
@@ -67,7 +90,7 @@ export async function analyzeRepository(repoUrl, options = {}) {
         env: options.env,
         fetchImpl: options.fetchImpl,
         sourceContents: options.sourceContents,
-        commits: options.commits
+        commits: options.commits || scan.providerData?.commits?.data || []
       });
     } catch (ingestErr) {
       analysisResult.projectMemory = {
@@ -83,6 +106,21 @@ export async function analyzeRepository(repoUrl, options = {}) {
       reason: 'Graph ingestion skipped by caller option.'
     };
   }
+
+  const isIngested = Boolean(analysisResult.projectMemory?.ingested);
+  analysisResult.indexing = {
+    status: isIngested ? 'indexed' : analysisResult.projectMemory?.status === 'error' ? 'error' : 'unindexed',
+    lastSync: new Date().toISOString(),
+    coverage: {
+      totalFiles: scan.totalFiles,
+      indexedFiles: analysisResult.projectMemory?.counts?.files ?? (isIngested ? scan.totalFiles : 0),
+      indexedSymbols: analysisResult.projectMemory?.counts?.symbols ?? 0,
+      indexedDecisions: analysisResult.projectMemory?.counts?.decisions ?? 0,
+      indexedBugs: analysisResult.projectMemory?.counts?.bugs ?? 0,
+      indexedFixes: analysisResult.projectMemory?.counts?.fixes ?? 0,
+    },
+    error: analysisResult.projectMemory?.error || null
+  };
 
   return analysisResult;
 }

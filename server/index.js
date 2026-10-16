@@ -7,6 +7,7 @@ import { analyzeRouter } from './routes/analyze.js';
 import { aiRouter } from './routes/ai.js';
 import { memoryRouter, handleGraphHealthCheck } from './routes/memory.js';
 import { incidentRouter } from './routes/incident.js';
+import { repositoryRouter } from './routes/repository.js';
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use((req, res, next) => express.json({ limit: defaultBodyLimit() })(req, res
 
 // API Routes
 app.use('/api', analyzeRouter);
+app.use('/api/repository', repositoryRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/memory', memoryRouter);
 app.use('/api/incident', incidentRouter);

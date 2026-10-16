@@ -53,7 +53,7 @@ export default function RepoHeader({
   const rawProvider = memoryOverview?.provider || graphHealth?.provider || analysisData?.projectMemory?.provider;
   const providerName = 'FalkorDB';
 
-  const isAdvancedActive = activeTab === 'overview' || activeTab === 'architecture' || activeTab === 'advanced';
+  const isAdvancedActive = activeTab === 'architecture';
 
   // Outside click and Escape key dismissal for the dropdown
   useEffect(() => {
@@ -94,7 +94,7 @@ export default function RepoHeader({
                   target="_blank"
                   rel="noreferrer"
                   className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-0.5"
-                  title="View on GitHub"
+                  title="View on Provider"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
@@ -102,6 +102,10 @@ export default function RepoHeader({
 
               <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-[#131b2c] dark:text-slate-300 border border-slate-200 dark:border-[#202d45]">
                 {repository.branch}
+              </span>
+
+              <span className="text-[11px] font-mono uppercase px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-cyan-300 border border-violet-200 dark:border-violet-900/60">
+                {repository.provider || 'GitHub'}
               </span>
 
               <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
@@ -151,24 +155,24 @@ export default function RepoHeader({
           </div>
         </div>
 
-        {/* Primary Navigation Tabs Strip */}
+        {/* Primary Navigation Tabs Strip: 1. Repository Overview, 2. Graph Memory, 3. Investigation Workspace */}
         <div className="flex items-center justify-between gap-2 border-t border-slate-200 dark:border-[#1a2336]/60">
           <nav className="flex items-center gap-1 -mb-px overflow-x-auto py-0 flex-1 min-w-0" aria-label="Tabs">
-            {/* 1. Investigation Workspace */}
+            {/* 1. Repository Overview (Default) */}
             <button
               type="button"
-              onClick={() => onSelectTab('incident')}
+              onClick={() => onSelectTab('overview')}
               className={`flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus:outline-none cursor-pointer ${
-                activeTab === 'incident'
-                  ? 'border-violet-600 text-violet-700 dark:text-white font-semibold'
+                activeTab === 'overview'
+                  ? 'border-teal-600 text-teal-700 dark:text-white font-semibold'
                   : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
-              <ShieldAlert className={`w-3.5 h-3.5 ${activeTab === 'incident' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'}`} />
-              <span>Investigation Workspace</span>
+              <LayoutDashboard className={`w-3.5 h-3.5 ${activeTab === 'overview' ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
+              <span>Repository Overview</span>
             </button>
 
-            {/* 2. Graph Memory & Provenance */}
+            {/* 2. Graph Memory */}
             <button
               type="button"
               onClick={() => onSelectTab('memory')}
@@ -187,22 +191,22 @@ export default function RepoHeader({
               )}
             </button>
 
-            {/* 3. Memory Q&A Recall */}
+            {/* 3. Investigation Workspace */}
             <button
               type="button"
-              onClick={() => onSelectTab('ask')}
+              onClick={() => onSelectTab('incident')}
               className={`flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus:outline-none cursor-pointer ${
-                activeTab === 'ask'
+                activeTab === 'incident'
                   ? 'border-violet-600 text-violet-700 dark:text-white font-semibold'
                   : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
-              <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'ask' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'}`} />
-              <span>Memory Q&A</span>
+              <ShieldAlert className={`w-3.5 h-3.5 ${activeTab === 'incident' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'}`} />
+              <span>Investigation Workspace</span>
             </button>
           </nav>
 
-          {/* 4. Advanced Tools Dropdown (Positioned outside overflow-x-auto to prevent clipping) */}
+          {/* 4. Advanced Tools Dropdown */}
           <div ref={menuRef} className="relative shrink-0 -mb-px">
             <button
               type="button"
@@ -225,7 +229,7 @@ export default function RepoHeader({
               <div 
                 role="menu"
                 aria-labelledby="advanced-tools-button"
-                className="absolute right-0 top-full mt-1.5 w-52 rounded-lg bg-white dark:bg-[#111726] border border-slate-200 dark:border-[#23314b] shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150"
+                className="absolute right-0 top-full mt-1.5 w-56 rounded-lg bg-white dark:bg-[#111726] border border-slate-200 dark:border-[#23314b] shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150"
               >
                 <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-[#1c273c] mb-1">
                   Codebase Intelligence
@@ -245,23 +249,6 @@ export default function RepoHeader({
                   <div>
                     <div className="font-medium text-slate-900 dark:text-slate-200">Architecture Explorer</div>
                     <div className="text-[10px] text-slate-500 dark:text-slate-400">Component dependency map</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    onSelectTab('overview');
-                    setShowAdvancedMenu(false);
-                  }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs text-left hover:bg-slate-50 dark:hover:bg-[#18233a] cursor-pointer transition-colors ${
-                    activeTab === 'overview' ? 'text-teal-700 dark:text-teal-300 font-semibold bg-teal-50/60 dark:bg-[#162035]' : 'text-slate-700 dark:text-slate-300'
-                  }`}
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
-                  <div>
-                    <div className="font-medium text-slate-900 dark:text-slate-200">Codebase Overview</div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Directory structure & metrics</div>
                   </div>
                 </button>
               </div>

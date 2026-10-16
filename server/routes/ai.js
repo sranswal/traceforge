@@ -13,7 +13,7 @@ aiRouter.post('/summary', async (req, res) => {
       });
     }
 
-    const summary = await aiProvider.generateArchitectureSummary(analysis);
+    const summary = await aiProvider.generateArchitectureSummary(analysis, { summaryMode: true });
     return res.json(summary);
   } catch (err) {
     return res.status(500).json({ available: false, error: err.message });

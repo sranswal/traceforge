@@ -23,66 +23,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import { generateContextualSuggestions } from '../../utils/analysisPayload';
+import MarkdownMessageRenderer from '../Common/MarkdownMessageRenderer';
 
-function FormattedAnswer({ text }) {
-  if (!text) return null;
-  const lines = text.split('\n');
-
-  return (
-    <div className="space-y-2 text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-sans">
-      {lines.map((line, idx) => {
-        const trimmed = line.trim();
-
-        if (trimmed.startsWith('### ')) {
-          return (
-            <h4 key={idx} className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 pt-2 pb-0.5 border-b border-slate-200 dark:border-[#1f2a3f]">
-              {trimmed.replace('### ', '')}
-            </h4>
-          );
-        }
-        if (trimmed.startsWith('## ')) {
-          return (
-            <h3 key={idx} className="text-sm font-bold text-slate-900 dark:text-slate-100 pt-3 pb-1 border-b border-slate-200 dark:border-[#1f2a3f]">
-              {trimmed.replace('## ', '')}
-            </h3>
-          );
-        }
-        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-          const itemText = trimmed.substring(2);
-          return (
-            <div key={idx} className="flex items-start gap-2 pl-2">
-              <span className="text-slate-400 dark:text-slate-500 font-bold mt-0.5">•</span>
-              <div>{renderInline(itemText)}</div>
-            </div>
-          );
-        }
-        if (!trimmed) return <div key={idx} className="h-1" />;
-        return <p key={idx}>{renderInline(trimmed)}</p>;
-      })}
-    </div>
-  );
-}
-
-function renderInline(text) {
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('`') && part.endsWith('`')) {
-      return (
-        <code key={i} className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#151c2c] text-violet-700 dark:text-cyan-400 border border-slate-200 dark:border-[#1f2a3f] mx-0.5">
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <strong key={i} className="font-semibold text-slate-900 dark:text-slate-100">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    return part;
-  });
-}
 
 function extractReferencedFiles(text, allFiles = []) {
   if (!text || !allFiles || allFiles.length === 0) return [];
@@ -694,7 +636,7 @@ export default function AskCodebaseTab({
                       </span>
                     )}
                   </div>
-                  <FormattedAnswer text={item.answer} />
+                  <MarkdownMessageRenderer content={item.answer} />
 
                   {/* Retrieved FalkorDB Graph Evidence Summary OR Fallback Notice */}
                   {item.graphMemory?.used ? (

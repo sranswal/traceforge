@@ -6,6 +6,7 @@ import {
   FileText,
   GitFork,
   GitCommit,
+  GitPullRequest,
   Code2,
   PlusCircle,
   Search,
@@ -38,11 +39,32 @@ import { buildEntityInvestigationPrompt } from '../../utils/analysisPayload';
 
 const NODE_STYLES = {
   Repository: {
+    bg: 'bg-violet-100 dark:bg-violet-950/70',
+    border: 'border-violet-500 dark:border-cyan-400 ring-2 ring-violet-400/30 dark:ring-cyan-400/30',
+    text: 'text-violet-950 dark:text-cyan-200 font-bold',
+    dot: '#8b5cf6',
+    radius: 26
+  },
+  Branch: {
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    border: 'border-emerald-300 dark:border-emerald-800',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    dot: '#10b981',
+    radius: 16
+  },
+  PullRequest: {
+    bg: 'bg-teal-50 dark:bg-teal-950/40',
+    border: 'border-teal-300 dark:border-teal-800',
+    text: 'text-teal-700 dark:text-teal-300',
+    dot: '#14b8a6',
+    radius: 16
+  },
+  Issue: {
     bg: 'bg-violet-50 dark:bg-violet-950/40',
     border: 'border-violet-300 dark:border-violet-800',
     text: 'text-violet-700 dark:text-violet-300',
     dot: '#8b5cf6',
-    radius: 22
+    radius: 15
   },
   Component: {
     bg: 'bg-indigo-50 dark:bg-indigo-950/40',
@@ -225,6 +247,7 @@ export default function ProjectMemoryTab({
   isLoadingMemory,
   memoryError,
   onRefreshMemory,
+  onStartInvestigation,
   onAskInCodebase
 }) {
   const rawProvider = memoryOverview?.provider || graphHealth?.provider || analysisData?.projectMemory?.provider;
@@ -2047,6 +2070,43 @@ export default function ProjectMemoryTab({
                     <MessageSquare className="w-3 h-3" />
                     <span>Investigate in Ask Codebase</span>
                   </button>
+
+                  {onStartInvestigation && (activeNode.label || activeNode.type) === 'PullRequest' && (
+                    <button
+                      type="button"
+                      onClick={() => onStartInvestigation({
+                        targetType: 'pr',
+                        item: {
+                          number: activeNode.details?.number || (activeNode.title || '').replace(/^PR\s*#?/i, ''),
+                          title: activeNode.title,
+                          base: activeNode.details?.base || 'main',
+                          head: activeNode.details?.head || ''
+                        }
+                      })}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-teal-600 hover:bg-teal-700 text-white transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <GitPullRequest className="w-3 h-3" />
+                      <span>Review PR in Incident Workspace</span>
+                    </button>
+                  )}
+
+                  {onStartInvestigation && (activeNode.label || activeNode.type) === 'Issue' && (
+                    <button
+                      type="button"
+                      onClick={() => onStartInvestigation({
+                        targetType: 'issue',
+                        item: {
+                          number: activeNode.details?.number || (activeNode.title || '').replace(/^Issue\s*#?/i, ''),
+                          title: activeNode.title,
+                          description: activeNode.details?.description || activeNode.details?.body || ''
+                        }
+                      })}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition-colors shadow-2xs cursor-pointer"
+                    >
+                      <AlertCircle className="w-3 h-3" />
+                      <span>Diagnose Issue in Incident Workspace</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"

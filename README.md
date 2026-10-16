@@ -34,43 +34,46 @@ TraceForge transforms repository analysis into a **connected knowledge graph**:
 
 ---
 
-## 2. Technical Architecture & FalkorDB Graph Engine
+## 2. Technical Architecture & Hybrid Engine
 
-TraceForge uses **FalkorDB** as its graph database engine, executing low-latency openCypher traversals with Redis-protocol compatibility.
+TraceForge pairs a high-performance **FalkorDB** graph engine with **Repository Provider Adapters** and **Google Gemini** multi-tier failover reasoning to deliver enterprise repository intelligence.
 
 ```
                     ┌────────────────────────────────────────────────────────┐
                     │               Client (React 19 + Vite)                 │
-                    │   Flagship Incident Investigation & Graph Explorer     │
+                    │   Overview | Graph Memory | Incident Hub | Ask Drawer  │
                     └───────────────────────────┬────────────────────────────┘
                                                 │ REST API
                                                 ▼
                     ┌────────────────────────────────────────────────────────┐
                     │              Express 5 Application Server              │
-                    │       server/index.js & server/routes/incident.js      │
-                    └───────────┬────────────────────────────────┬───────────┘
-                                │                                │
-                Cypher Retrieval│                                │ Grounded Prompts
-                                ▼                                ▼
-    ┌──────────────────────┐                       ┌───────────────────────────┐
-    │ FalkorDB Engine      │                       │ Google Gemini Failover    │
-    │ Client: falkordb     │                       │ (gemini-3.8-flash ->      │
-    │ openCypher Traversals│                       │  gemini-3.6-flash ->      │
-    │ Redis Protocol       │                       │  gemini-3.5-flash-lite)   │
-    └──────────────────────┘                       └───────────────────────────┘
+                    │   server/routes: repository, incident, memory, ai      │
+                    └───────────┬───────────────────┬────────────────┬───────┘
+                                │                   │                │
+                Cypher Retrieval│    Git Provider   │                │ Grounded Prompts
+                                ▼    API (Octokit)  ▼                ▼
+     ┌────────────────────────────┐ ┌──────────────────────┐ ┌───────────────────────────┐
+     │ FalkorDB Graph Engine      │ │ Provider Adapters    │ │ Google Gemini Failover    │
+     │ Client: falkordb           │ │ - GitHubAdapter      │ │ (gemini-3.8-flash ->      │
+     │ openCypher Traversals      │ │ - MockAdapter        │ │  gemini-3.6-flash ->      │
+     │ Call graphs & memories     │ │ Branches, PRs, Diffs │ │  gemini-3.5-flash-lite)   │
+     └────────────────────────────┘ └──────────────────────┘ └───────────────────────────┘
 ```
 
-### Graph Schema
+### Connected Graph Schema
 
 ```
 (:Repository)
    │
-   ├──[:REPOSITORY_HAS_COMPONENT]────► (:Component)
+   ├──[:REPOSITORY_HAS_BRANCH]──────► (:Branch)
+   ├──[:REPOSITORY_HAS_PR]──────────► (:PullRequest)
+   ├──[:REPOSITORY_HAS_ISSUE]───────► (:Issue)
+   ├──[:REPOSITORY_HAS_COMPONENT]───► (:Component)
    │                                        │
    │                                  [:COMPONENT_CONTAINS_FILE]
    │                                        │
    │                                        ▼
-   ├──[:REPOSITORY_CONTAINS_FILE]────► (:File)
+   ├──[:REPOSITORY_CONTAINS_FILE]───► (:File)
                                             │
                                       [:FILE_DEFINES_SYMBOL]
                                             │
@@ -90,20 +93,35 @@ TraceForge uses **FalkorDB** as its graph database engine, executing low-latency
 
 ---
 
-## 3. Flagship Workflow
+## 3. Flagship Workflows & Core Capabilities
 
-TraceForge's flagship workflow demonstrates graph superiority in 8 distinct steps:
+TraceForge provides three target-aware investigation modes, backed by strict **Epistemic Truth Boundaries**:
 
-1. **Deterministic Scenario Seeding**: Seeds an isolated synthetic repository scenario (`acme/payment-gateway`) in FalkorDB with call graphs, recent commits, and a historical mutex regression (`Worker Thread Lock Starvation under High Concurrency`).
-2. **Regression Investigation**: Accepts an incident report with observable symptoms (`504 Gateway Timeout Cascade`).
-3. **Keyword vs. Graph Comparison**:
-   - **Naive Keyword Baseline**: Wrongly flags decoy `services/rateLimiter.js` (`checkRateLimit`, 0 hops).
-   - **Graph-Native Traversal**: Correctly identifies `services/tokenBucket.js:acquireTokenLock` (2 hops away).
-4. **Connected Evidence Chain**: Inspects the multi-hop path: `server/routes/pay.js` (`handlePaymentRequest`) $\to$ `services/auth.js` (`verifyToken`) $\to$ `services/tokenBucket.js` (`acquireTokenLock`), correlated with commit `8f2a1b9` and historical bug `"Worker Thread Lock Starvation under High Concurrency"`.
-5. **Non-Destructive Recovery Simulation**: Reviews a safe circuit-breaker rollback proposal with blast-radius estimation (1 file affected).
-6. **Confirmed Outcome Recording**: Persists the confirmed fix to FalkorDB as `:Fix` $\to$ `[:FIX_RESOLVES_BUG]` $\to$ `:Bug`.
-7. **Fresh-Request Memory Recall**: Queries the codebase in **Ask Codebase** and verifies that the new resolution is instantly recalled.
-8. **2-Hop Graph Ablation Proof**: Demonstrates that severing Hop 1 or Hop 2 in the graph materially alters evidence reachability and drops confidence from `HIGH` to `INSUFFICIENT_EVIDENCE`.
+### A. Target-Aware Pull Request Review
+- **Unified Diff Parsing**: Ingests multi-file git diffs, hunk line additions/deletions, and branch metadata.
+- **AST Symbol Mapping**: Projects touched line intervals directly onto AST symbols (`:Symbol`).
+- **Upstream Regression Callers**: Traces inbound `:SYMBOL_CALLS_SYMBOL` edges across external files to isolate un-modified code paths susceptible to regressions.
+- **Missing Test Coverage Audit**: Differentiates symbols with verified test callers from untested modifications.
+- **Epistemic Truth Boundaries**: Enforces strict separation between:
+  - `Observed Facts`: Scanned AST diff lines, mapped symbols, and static call sites.
+  - `Inferred Hypotheses`: Potential regression callers and missing test alerts.
+  - `Explicit Uncertainties`: Dynamically disclaims unexecuted test runners and unverified concurrency behavior.
+
+### B. Issue Diagnosis Grounded in Institutional Memory
+- **Contextual Token & Symbol Correlation**: Matches issue descriptions and stack traces with repository components and symbols.
+- **Historical Remediation Recall**: Cypher queries against FalkorDB identify prior similar bugs and verified patches.
+- **Root-Cause Hypothesis Ranking**: Recommends the highest-confidence component with candidate matrix transparency.
+
+### C. Incident Causal Traversal & Controlled Edge Ablation
+- **Multi-Hop Traversal**: From API entrypoint (`server/routes/pay.js`) $\to$ auth (`services/auth.js`) $\to$ token bucket lock (`services/tokenBucket.js:acquireTokenLock`).
+- **Decoy Rejection**: Refutes surface decoys (`services/rateLimiter.js`) with deterministic mathematical scoring.
+- **Non-Destructive Simulation**: Proposes rollback patches with blast-radius analysis before mutating code.
+- **Controlled Read-Only Ablation**: Dynamically removes decisive graph edges to demonstrate that graph connectivity is causally necessary for diagnosis.
+
+### D. Global Context-Aware Ask Drawer
+- Mounts persistently across every tab in the application.
+- Synchronizes with active repository context (active PR, active Issue, or active incident).
+- Offers one-click quick prompt chips ("Audit regression risks in this PR", "Check missing tests", "Find historical fix precedents").
 
 ---
 
@@ -154,51 +172,50 @@ npm run dev
 
 ## 5. Five-Minute Hackathon Demo Script
 
-Follow this script to deliver an impactful, competition-grade presentation to hackathon judges:
+Follow this script to deliver an impactful presentation to hackathon judges:
 
-### Scene 1: The Incident & The Naive Trap (1:00)
-1. Open `http://localhost:3000`. The browser displays **TraceForge** with the **Incident Investigation** flagship tab open by default.
-2. Click **"Seed Synthetic Scenario"**. Notice FalkorDB is idempotently seeded with `acme/payment-gateway`, AST call hierarchies, recent commit `8f2a1b9`, and historical bug memory.
-3. Show the incident symptoms: *"HTTP 504 Gateway Timeout cascade on /api/pay immediately following deployment of commit 8f2a1b9"*.
-4. Point out the surface suspect decoy: `services/rateLimiter.js`.
+### Scene 1: Real-World Repository Overview (1:00)
+1. Open `http://localhost:3000`. The browser displays **TraceForge** on the **Repository Overview** tab.
+2. Note the repository switcher and identity card displaying live repository branches, open issues, and pull requests.
+3. Locate **PR #12: "Implement non-blocking acquireTokenLock with timeout"** in the Active Pull Requests section.
+4. Click **"Investigate"** on the PR card. Notice TraceForge transitions seamlessly to the **Incident Investigation** tab in **PR Review** mode.
 
-### Scene 2: The Graph Traversal Breakthrough (1:15)
-1. Click **"Investigate Failure Chain"**.
-2. Compare the side-by-side results:
-   - **Left Panel (Keyword Search)**: Shows how standard grep fails. It flags `services/rateLimiter.js` simply because rate limiters deal with "timeouts".
-   - **Right Panel (Graph-Native Traversal)**: FalkorDB identifies the **true root cause**: `services/tokenBucket.js:acquireTokenLock`.
-3. Explain why: The API entrypoint `server/routes/pay.js` (`handlePaymentRequest`) calls `services/auth.js` (`verifyToken`), which in turn calls `services/tokenBucket.js` (`acquireTokenLock`). Commit `8f2a1b9` modified `tokenBucket.js`, introducing an unbounded synchronous blocking wait.
+### Scene 2: PR Review, Regression Callers & Test Coverage (1:15)
+1. In PR Review mode, inspect the pre-flight analysis cards:
+   - **Unified Git Diff**: Shows changes in `services/tokenBucket.js`.
+   - **Regression Callers**: Flags external callers (`verifyToken` in `services/auth.js`) that invoke the modified symbol.
+   - **Missing Test Coverage**: Flags whether tests cover modified symbols.
+2. Point out the **Epistemic Truth Boundaries**:
+   - `Observed Facts`: Static lines changed, mapped AST symbols, static callers discovered.
+   - `Inferred Hypotheses`: Potential regression callers and test gaps.
+   - `Explicit Uncertainties`: Honest declaration that Jest/Vitest test suites were not dynamically executed.
 
-### Scene 3: Connected Evidence & Historical Memory (1:00)
-1. Scroll down to the **Connected Graph Evidence Chain**.
-2. Walk through the verified provenance nodes:
-   - **Step 1**: Entrypoint `server/routes/pay.js:handlePaymentRequest`.
-   - **Step 2**: Call hop 1 `services/auth.js:verifyToken`.
-   - **Step 3**: Call hop 2 `services/tokenBucket.js:acquireTokenLock` (lines 2–6).
-   - **Step 4**: Commit provenance `8f2a1b9` modifying `services/tokenBucket.js`.
-   - **Step 5**: Historical incident match: `"Worker Thread Lock Starvation under High Concurrency"` (`acme/payment-gateway::bug::lock-starvation-01`), including its verified fix (*"Enforce non-blocking tryAcquire with circuit breaker timeout"*).
+### Scene 3: Issue Diagnosis Grounded in Graph Memory (1:00)
+1. Switch to **"Issue Diagnosis"** mode in the 3-mode segmented switcher.
+2. Select **Issue #101: "Worker thread starvation under burst payment volume"**.
+3. Observe how TraceForge correlates the issue text with repository symbols and recalls prior bug fixes from FalkorDB institutional memory.
 
-### Scene 4: Safe Recovery & Memory Persistence (0:45)
-1. Click **"Simulate Recovery"**. Review the non-destructive patch proposal and blast radius (1 file affected).
-2. Click **"Record to Graph"**. Show that the verified fix is stored in FalkorDB with a `FIX_RESOLVES_BUG` relationship.
-3. Switch to the **Ask Codebase** tab. Ask: *"What caused the timeout in payment gateway?"*
-4. Show that Gemini retrieves the newly persisted FalkorDB memory record as confirmed historical precedent.
+### Scene 4: Incident Causal Graph & 2-Hop Ablation (1:00)
+1. Switch to **"Bug / Anomaly"** mode.
+2. Run the investigation on the Payment Gateway 504 Timeout cascade.
+3. Show the **Candidate Matrix**:
+   - Decoy `services/rateLimiter.js` is rejected (0-hop surface token match).
+   - `services/tokenBucket.js:acquireTokenLock` is identified as the leading hypothesis 2 hops away.
+4. Run the **Controlled Graph Ablation**: severing Hop 1 or Hop 2 drops confidence to `INSUFFICIENT_EVIDENCE`, proving that graph traversal is causally essential.
 
-### Scene 5: The Technical Proof - Graph Ablation (1:00)
-1. Open the terminal or explain the automated regression test `test 20` (`tests/incident.investigation.test.js`):
-   - Sever **Hop 1** (`server/routes/pay.js` $\to$ `services/auth.js`): FalkorDB traversal cannot reach the token bucket. Result: Confidence drops to `INSUFFICIENT_EVIDENCE`.
-   - Sever **Hop 2** (`services/auth.js` $\to$ `services/tokenBucket.js`): Traversal reaches auth service but stops short of the modified commit. Result: Confidence drops to `INSUFFICIENT_EVIDENCE`.
-   - Restore the edges: High-confidence root-cause discovery is immediately restored.
-2. **Closing Punchline**: *"TraceForge proves that graph connectivity isn't just a database choice—it is the difference between a misleading surface decoy and the true root cause."*
+### Scene 5: Global Context-Aware Ask Drawer (0:45)
+1. Click **"Ask TraceForge"** in the top navigation header.
+2. The slide-over drawer opens with the active investigation context badge and quick prompt chips.
+3. Ask a codebase question; Gemini synthesizes graph evidence, historical precedents, and code structure into an actionable answer.
 
 ---
 
 ## 6. Test Suite & Verification
 
-TraceForge includes 96 comprehensive automated tests spanning unit logic, FalkorDB schema & retrieval, provider failover, and graph ablation.
+TraceForge includes **137 comprehensive automated tests across 19 suites** with a 100% pass rate.
 
 ```bash
-# Run the complete test suite
+# Run the complete test suite (137 tests across 19 suites)
 npm test
 
 # Run unit and mock graph tests
@@ -212,10 +229,11 @@ npm run build
 ```
 
 ### Test Coverage Highlights
-- **Determinism & Idempotence**: Verifies repeated seeding leaves exactly 1 incident bug and preserves canonical precedent.
-- **Self-Referential Bug Prevention**: Verifies current incident reports cannot match themselves as historical bugs.
-- **Provider Consistency**: Verifies pure FalkorDB graph engine provider operation without hardcoded credential leaks.
-- **2-Hop Ablation Experiment**: Verifies that severing call relationships dynamically degrades diagnosis confidence from `HIGH` to `INSUFFICIENT_EVIDENCE`.
+- **Repository Isolation Suite**: Strictly guarantees zero state or fixture leakage between repositories (`acme/payment-gateway`, `ecommerce/order-service`, GitHub repos).
+- **Target-Aware Investigation Suite**: Validates diff parsing, PR regression caller tracking, missing test discovery, and issue diagnosis across multiple repositories.
+- **Epistemic Truth Safeguards**: Prevents unsupported claims (e.g. banning "True Root Cause" in favor of "Leading Root-Cause Hypothesis" and ensuring dynamic test execution is never fabricated).
+- **Client Component Integrity**: Scans all client JSX files to verify that all icons and elements are declared, imported, and error-boundary protected.
+- **Deterministic 2-Hop Ablation**: Proves that edge severing degrades confidence predictably.
 - **Gemini Failover**: 12-case test suite verifying multi-model (`gemini-3.8-flash` $\to$ `gemini-3.6-flash` $\to$ `gemini-3.5-flash-lite`) and multi-key failover with credential redaction.
 
 ---

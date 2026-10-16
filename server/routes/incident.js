@@ -453,18 +453,29 @@ incidentRouter.post('/investigate', async (req, res) => {
       return res.status(400).json({ error: 'Incident report "title" is required.' });
     }
 
-    const repoFullName = report.repoFullName || analysis?.repository?.fullName || '';
+    const repoFullName = report.repoFullName || req.body?.targetRepo || req.body?.repoFullName || analysis?.repository?.fullName || '';
     if (!repoFullName || !repoFullName.includes('/')) {
       return res.status(400).json({ error: 'Valid repository fullName (e.g. "owner/repo") is required.' });
     }
+    if (!report.repoFullName) {
+      report.repoFullName = repoFullName;
+    }
+    if (req.body?.investigationType && !report.targetType) {
+      report.targetType = req.body.investigationType;
+    }
+
+    const isExplicitDemo = Boolean(
+      (req.body.isDemo || report.isDemo || req.body.scenarioMode === 'synthetic') &&
+      repoFullName === SYNTHETIC_INCIDENT_FIXTURE.repository.fullName
+    );
 
     const effectiveAnalysis = (analysis?.aiContextReady?.filePaths?.length)
       ? analysis
-      : (repoFullName === SYNTHETIC_INCIDENT_FIXTURE.repository.fullName
+      : (isExplicitDemo
           ? SYNTHETIC_INCIDENT_FIXTURE
-          : analysis);
+          : (analysis || { repository: { fullName: repoFullName } }));
 
-    const options = {};
+    const options = { isDemo: isExplicitDemo };
     if (experiment && (experiment.ablateCausalEdge || experiment.type === 'ablate_edge' || experiment.type === 'exclude_relationship')) {
       options.ablateCausalEdge = true;
       if (experiment.caller && experiment.callee) {
@@ -552,7 +563,7 @@ incidentRouter.post('/record', async (req, res) => {
  */
 incidentRouter.get('/recall', async (req, res) => {
   try {
-    const repo = String(req.query.repo || SYNTHETIC_INCIDENT_FIXTURE.repository.fullName).trim();
+    const repo = String(req.query.repo || '').trim();
     if (!repo || !repo.includes('/')) {
       return res.status(400).json({ error: 'Valid repository fullName (e.g. "owner/repo") is required.' });
     }

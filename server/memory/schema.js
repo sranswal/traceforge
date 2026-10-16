@@ -14,7 +14,10 @@ export const NODE_LABELS = Object.freeze({
   BUG: 'Bug',
   FIX: 'Fix',
   TECHNICAL_DECISION: 'TechnicalDecision',
-  TEST: 'Test'
+  TEST: 'Test',
+  BRANCH: 'Branch',
+  PULL_REQUEST: 'PullRequest',
+  ISSUE: 'Issue'
 });
 
 export const REL_TYPES = Object.freeze({
@@ -31,7 +34,13 @@ export const REL_TYPES = Object.freeze({
   FIX_RESOLVES_BUG: 'FIX_RESOLVES_BUG',
   FIX_APPLIED_IN_COMMIT: 'FIX_APPLIED_IN_COMMIT',
   DECISION_AFFECTS_COMPONENT: 'DECISION_AFFECTS_COMPONENT',
-  TEST_COVERS_SYMBOL: 'TEST_COVERS_SYMBOL'
+  TEST_COVERS_SYMBOL: 'TEST_COVERS_SYMBOL',
+  REPOSITORY_HAS_BRANCH: 'REPOSITORY_HAS_BRANCH',
+  BRANCH_HEAD_COMMIT: 'BRANCH_HEAD_COMMIT',
+  REPOSITORY_HAS_PR: 'REPOSITORY_HAS_PR',
+  REPOSITORY_HAS_ISSUE: 'REPOSITORY_HAS_ISSUE',
+  PR_AFFECTS_FILE: 'PR_AFFECTS_FILE',
+  ISSUE_AFFECTS_FILE: 'ISSUE_AFFECTS_FILE'
 });
 
 /**
@@ -97,6 +106,18 @@ export const GraphIds = {
   decision(repoFullName, keyOrTitle) {
     const repoKey = normalizePath(repoFullName).toLowerCase();
     return `${repoKey}::decision::${slugify(keyOrTitle)}`;
+  },
+  branch(repoFullName, name) {
+    const repoKey = normalizePath(repoFullName).toLowerCase();
+    return `${repoKey}::branch::${slugify(name)}`;
+  },
+  pullRequest(repoFullName, number) {
+    const repoKey = normalizePath(repoFullName).toLowerCase();
+    return `${repoKey}::pr::${number}`;
+  },
+  issue(repoFullName, number) {
+    const repoKey = normalizePath(repoFullName).toLowerCase();
+    return `${repoKey}::issue::${number}`;
   }
 };
 

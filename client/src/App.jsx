@@ -8,6 +8,7 @@ import ArchitectureTab from './components/Tabs/ArchitectureTab';
 import ProjectMemoryTab from './components/Tabs/ProjectMemoryTab';
 import IncidentInvestigationTab from './components/Tabs/IncidentInvestigationTab';
 import AskCodebaseTab from './components/Tabs/AskCodebaseTab';
+import GlobalAskDrawer from './components/GlobalAskDrawer';
 import ErrorBoundary from './components/ErrorBoundary';
 import { buildCompactAnalysisPayload } from './utils/analysisPayload';
 
@@ -31,9 +32,9 @@ export default function App() {
     }
   });
   const [activeTab, setActiveTab] = useState(() => {
-    const savedTab = sessionStorage.getItem(SESSION_TAB_KEY) || 'incident';
+    const savedTab = sessionStorage.getItem(SESSION_TAB_KEY) || 'overview';
     return savedTab === 'files' ? 'memory' : savedTab;
-  }); // 'incident' | 'overview' | 'memory' | 'architecture' | 'ask'
+  }); // 'overview' | 'memory' | 'incident' | 'architecture' | 'ask'
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -66,6 +67,11 @@ export default function App() {
   const [isAsking, setIsAsking] = useState(false);
   const [qaError, setQaError] = useState(null);
   const [investigationTarget, setInvestigationTarget] = useState(null);
+
+  // Global Ask Drawer & Target-Aware Investigation Launch state
+  const [isAskDrawerOpen, setIsAskDrawerOpen] = useState(false);
+  const [activeContext, setActiveContext] = useState(null);
+  const [investigationLaunchTarget, setInvestigationLaunchTarget] = useState(null);
 
   // Apply theme class to document
   useEffect(() => {
@@ -124,7 +130,8 @@ export default function App() {
     if (!repoData || !repoFullName) return;
 
     // 1. Check session cache unless forced
-    const cacheKey = `${SESSION_SUMMARY_PREFIX}${repoFullName}`;
+    const branch = repoData?.repository?.branch || repoData?.repository?.defaultBranch || 'main';
+    const cacheKey = `${SESSION_SUMMARY_PREFIX}${repoFullName}_${branch}`;
     if (!forceRefresh) {
       try {
         const cachedRaw = sessionStorage.getItem(cacheKey);
@@ -166,7 +173,7 @@ export default function App() {
           'Repository analysis payload exceeded the request size limit (413). Compact payload mode is required.'
         );
       }
-      if (!res.ok || !data.available) {
+      if (!res.ok || (!data.available && !data.isDeterministicFallback)) {
         throw new Error(data.error || 'Failed to generate AI summary.');
       }
 
@@ -174,6 +181,7 @@ export default function App() {
         model: data.model || null,
         primaryModel: data.primaryModel || null,
         fallbackUsed: Boolean(data.fallbackUsed),
+        isDeterministicFallback: Boolean(data.isDeterministicFallback),
         attempts: data.attempts || 1
       };
       setSummary(data.summary);
@@ -244,6 +252,11 @@ export default function App() {
 
       setAnalysisData(data);
       setActiveTab('overview');
+      setActiveContext({
+        type: 'repository',
+        title: data?.repository?.fullName || repoUrl,
+        entity: data?.repository
+      });
     } catch (err) {
       console.error(err);
       setError(err.message || 'An unexpected error occurred during analysis');
@@ -414,6 +427,16 @@ export default function App() {
     setQaError(null);
   };
 
+  const handleStartInvestigation = ({ targetType, item }) => {
+    setInvestigationLaunchTarget({ targetType, item, timestamp: Date.now() });
+    setActiveContext({
+      type: targetType,
+      title: item?.title || (targetType === 'pr' ? `PR Review` : (targetType === 'issue' ? `Issue Diagnosis` : `Bug Diagnosis`)),
+      entity: item
+    });
+    setActiveTab('incident');
+  };
+
   const handleNewSearch = () => {
     setAnalysisData(null);
     setMemoryOverview(null);
@@ -421,6 +444,10 @@ export default function App() {
     setSummaryMeta(null);
     setSummaryError(null);
     setInvestigationTarget(null);
+    setInvestigationLaunchTarget(null);
+    setActiveContext(null);
+    setIsAskDrawerOpen(false);
+    setQaHistory([]);
     setError(null);
     setActiveTab('incident');
   };
@@ -461,6 +488,11 @@ export default function App() {
 
       setAnalysisData(sampleData);
       setActiveTab('incident');
+      setActiveContext({
+        type: 'repository',
+        title: 'acme/payment-gateway',
+        entity: sampleData.repository
+      });
       fetchMemoryOverview('acme/payment-gateway');
     } catch (err) {
       console.error(err);
@@ -482,6 +514,8 @@ export default function App() {
         currentRepo={currentActiveRepo}
         graphHealth={graphHealth}
         isLoading={isLoading}
+        onToggleAsk={() => setIsAskDrawerOpen(prev => !prev)}
+        isAskOpen={isAskDrawerOpen}
       />
 
       {/* 2. Repository Workspace Header (Shown when repository is analyzed) */}
@@ -524,6 +558,7 @@ export default function App() {
                   summaryError={summaryError}
                   onGenerateSummary={handleGenerateSummary}
                   onNavigateToTab={setActiveTab}
+                  onStartInvestigation={handleStartInvestigation}
                 />
               )}
 
@@ -538,8 +573,17 @@ export default function App() {
                   graphHealth={graphHealth}
                   isLoadingMemory={isLoadingMemory}
                   memoryError={memoryError}
-                  onRefreshMemory={() => fetchMemoryOverview(analysisData.repository?.fullName)}
-                  onAskInCodebase={handleAskFromMemory}
+                  onRefreshMemory={() => fetchMemoryOverview(analysisData?.repository?.fullName)}
+                  onStartInvestigation={handleStartInvestigation}
+                  onAskInCodebase={(prompt, entity) => {
+                    setActiveContext({
+                      type: entity?.label?.toLowerCase() || 'node',
+                      title: entity?.title || 'Selected Entity',
+                      entity
+                    });
+                    setIsAskDrawerOpen(true);
+                    handleAskFromMemory(prompt, entity);
+                  }}
                 />
               )}
 
@@ -548,6 +592,9 @@ export default function App() {
                   analysisData={analysisData}
                   memoryOverview={memoryOverview}
                   graphHealth={graphHealth}
+                  investigationLaunchTarget={investigationLaunchTarget}
+                  onClearLaunchTarget={() => setInvestigationLaunchTarget(null)}
+                  onUpdateContext={(ctx) => setActiveContext(ctx)}
                   onNavigateToTab={(tab, options) => {
                     if (options) {
                       handleAskFromIncident(options);
@@ -579,6 +626,21 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Global Context-Aware Ask Drawer */}
+      <GlobalAskDrawer
+        isOpen={isAskDrawerOpen}
+        onClose={() => setIsAskDrawerOpen(false)}
+        currentRepo={currentActiveRepo}
+        currentBranch={analysisData?.repository?.branch || analysisData?.repository?.defaultBranch || 'main'}
+        currentProvider={analysisData?.repository?.provider || 'GitHub'}
+        activeContext={activeContext}
+        qaHistory={qaHistory}
+        isAsking={isAsking}
+        qaError={qaError}
+        onAskQuestion={handleAskQuestion}
+        onClearHistory={handleClearQA}
+      />
 
       {/* Minimal Developer Tool Footer */}
       <footer className="border-t border-[#1f2a3f] bg-[#0c111a] py-3 text-xs text-slate-400">

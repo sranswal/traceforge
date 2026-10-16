@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Search, Terminal, Database, Activity, ShieldAlert } from 'lucide-react';
+import { Sun, Moon, Search, Terminal, Database, Activity, ShieldAlert, MessageSquare } from 'lucide-react';
 
 export default function Header({
   theme,
@@ -7,7 +7,9 @@ export default function Header({
   onNewSearch,
   currentRepo,
   graphHealth,
-  isLoading
+  isLoading,
+  onToggleAsk,
+  isAskOpen
 }) {
   const isSample = currentRepo === 'acme/payment-gateway';
   const isGraphConnected = graphHealth?.connected ?? true;
@@ -92,17 +94,33 @@ export default function Header({
           </div>
         )}
 
-        {/* Right Controls: Connect/New Repo, Theme Toggle, GitHub */}
+        {/* Right Controls: Connect/New Repo, Global Ask, Theme Toggle, GitHub */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {currentRepo && (
-            <button
-              type="button"
-              onClick={onNewSearch}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border border-slate-200 dark:border-[#27354d] bg-slate-100 hover:bg-slate-200 dark:bg-[#141b29] dark:hover:bg-[#1a2438] text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
-            >
-              <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span className="hidden sm:inline">Connect Repo</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={onToggleAsk}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors cursor-pointer shadow-2xs ${
+                  isAskOpen
+                    ? 'border-violet-500 bg-violet-600 text-white font-semibold'
+                    : 'border-violet-300 dark:border-violet-900/60 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/40 dark:hover:bg-violet-900/60 text-violet-700 dark:text-cyan-300'
+                }`}
+                title="Toggle Global Context-Aware Ask Drawer"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span className="font-medium">Ask</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onNewSearch}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border border-slate-200 dark:border-[#27354d] bg-slate-100 hover:bg-slate-200 dark:bg-[#141b29] dark:hover:bg-[#1a2438] text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
+              >
+                <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span className="hidden sm:inline">Connect Repo</span>
+              </button>
+            </>
           )}
 
           <button

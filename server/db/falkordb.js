@@ -158,6 +158,9 @@ export async function getClient({ env = process.env, throwOnInvalid = false } = 
   if (!clientInstance || clientConfigSignature !== signature) {
     if (clientInstance) {
       try {
+        if (typeof clientInstance.removeAllListeners === 'function') {
+          clientInstance.removeAllListeners('error');
+        }
         await clientInstance.close();
       } catch {
         // Ignore errors on closing previous connection
@@ -195,7 +198,18 @@ export async function getClient({ env = process.env, throwOnInvalid = false } = 
     }
 
     try {
-      clientInstance = await FalkorDB.connect(options);
+      const client = await FalkorDB.connect(options);
+      if (typeof client?.on === 'function') {
+        client.on('error', (err) => {
+          // Prevent process crash from socket resets (ECONNRESET) or unhandled Redis error events
+          const code = err?.code || '';
+          if (code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'EPIPE' || code === 'NR_CLOSED') {
+            clientInstance = null;
+            clientConfigSignature = null;
+          }
+        });
+      }
+      clientInstance = client;
       clientConfigSignature = signature;
     } catch (err) {
       if (throwOnInvalid) {

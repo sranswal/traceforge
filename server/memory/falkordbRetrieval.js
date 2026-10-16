@@ -58,7 +58,11 @@ export function buildInteractiveGraphSubgraph(repoFullName, {
   componentDependencies = [],
   symbols = [],
   recentCommits = [],
-  componentsList = []
+  componentsList = [],
+  branches = [],
+  pullRequests = [],
+  issues = [],
+  sliceTarget = null
 } = {}) {
   const nodesMap = new Map();
   const edges = [];
@@ -403,6 +407,108 @@ export function buildInteractiveGraphSubgraph(repoFullName, {
           provenance: 'Git Commit Diff'
         });
       }
+    }
+  }
+
+  // 6. Provider Branches
+  for (const b of (branches || []).slice(0, 6)) {
+    if (!b?.name) continue;
+    const branchId = GraphIds.branch(repoFullName, b.name);
+    addNode({
+      id: branchId,
+      label: 'Branch',
+      title: b.name,
+      subtitle: b.isDefault ? 'Default Branch' : 'Branch',
+      provenance: 'Git Repository Provider',
+      details: {
+        name: b.name,
+        commitSha: b.commitSha,
+        isDefault: Boolean(b.isDefault),
+        protected: Boolean(b.protected)
+      }
+    });
+    addEdge(repoId, branchId, 'REPOSITORY_HAS_BRANCH', { provenance: 'Git Provider Metadata' });
+
+    if (b.commitSha) {
+      const headCommitId = GraphIds.commit(repoFullName, b.commitSha);
+      if (nodesMap.has(headCommitId)) {
+        addEdge(branchId, headCommitId, 'BRANCH_HEAD_COMMIT', { provenance: 'Git Provider Metadata' });
+      }
+    }
+  }
+
+  // 7. Provider Pull Requests
+  for (const pr of (pullRequests || []).slice(0, 5)) {
+    if (!pr?.number) continue;
+    const prId = GraphIds.pullRequest(repoFullName, pr.number);
+    addNode({
+      id: prId,
+      label: 'PullRequest',
+      title: `PR #${pr.number}: ${pr.title}`,
+      subtitle: `${pr.head || 'branch'} → ${pr.base || 'main'} (${pr.state || 'open'})`,
+      provenance: 'Git Repository Provider',
+      details: {
+        number: pr.number,
+        title: pr.title,
+        author: pr.author,
+        head: pr.head,
+        base: pr.base,
+        state: pr.state
+      }
+    });
+    addEdge(repoId, prId, 'REPOSITORY_HAS_PR', { provenance: 'Git Provider Metadata' });
+  }
+
+  // 8. Provider Issues
+  for (const iss of (issues || []).slice(0, 5)) {
+    if (!iss?.number) continue;
+    const issueId = GraphIds.issue(repoFullName, iss.number);
+    addNode({
+      id: issueId,
+      label: 'Issue',
+      title: `Issue #${iss.number}: ${iss.title}`,
+      subtitle: `Issue #${iss.number} (${iss.state || 'open'})`,
+      provenance: 'Git Repository Provider',
+      details: {
+        number: iss.number,
+        title: iss.title,
+        author: iss.author,
+        state: iss.state,
+        labels: (iss.labels || []).join(', ')
+      }
+    });
+    addEdge(repoId, issueId, 'REPOSITORY_HAS_ISSUE', { provenance: 'Git Provider Metadata' });
+  }
+
+  // Revision slicing: if sliceTarget is provided, isolate the revision subgraph
+  if (sliceTarget?.type && sliceTarget?.id) {
+    const targetKey = String(sliceTarget.id).toLowerCase();
+    const matchedNode = Array.from(nodesMap.values()).find(n => 
+      n.id.toLowerCase().includes(targetKey) || 
+      n.title.toLowerCase().includes(targetKey) ||
+      (n.details?.sha && n.details.sha.toLowerCase().startsWith(targetKey)) ||
+      (n.details?.number && String(n.details.number) === targetKey)
+    );
+
+    if (matchedNode) {
+      const sliceNodeIds = new Set([repoId, matchedNode.id]);
+      for (const e of edges) {
+        if (e.source === matchedNode.id) sliceNodeIds.add(e.target);
+        if (e.target === matchedNode.id) sliceNodeIds.add(e.source);
+      }
+      for (const e of edges) {
+        if (sliceNodeIds.has(e.source) && (e.type === 'FILE_DEFINES_SYMBOL' || e.type === 'TEST_COVERS_SYMBOL')) {
+          sliceNodeIds.add(e.target);
+        }
+      }
+
+      const slicedNodes = Array.from(nodesMap.values()).filter(n => sliceNodeIds.has(n.id));
+      const slicedEdges = edges.filter(e => sliceNodeIds.has(e.source) && sliceNodeIds.has(e.target));
+      return {
+        nodes: slicedNodes,
+        edges: slicedEdges,
+        slicedTarget: matchedNode.id
+      };
     }
   }
 
@@ -1163,7 +1269,11 @@ export async function getFalkorDBRepositoryMemoryOverview(repoFullNameInput, opt
       componentDependencies: depsWithProvenance,
       symbols: symbolsWithProvenance,
       recentCommits: contextRes.recentCommits || [],
-      componentsList
+      componentsList,
+      branches: options.branches || [],
+      pullRequests: options.pullRequests || [],
+      issues: options.issues || [],
+      sliceTarget: options.sliceTarget || null
     });
 
     return {

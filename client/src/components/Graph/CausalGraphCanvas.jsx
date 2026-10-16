@@ -54,6 +54,249 @@ export default function CausalGraphCanvas({
       return { nodes: [], edges: [] };
     }
 
+    const isDemo = Boolean(investigation.isDemo || investigation.repoFullName === 'acme/payment-gateway');
+
+    // For real repositories, dynamically construct nodes & edges from actual investigation evidence
+    if (!isDemo) {
+      const realNodes = [];
+      const realEdges = [];
+      const chain = investigation.connectedEvidence?.evidenceChain || [];
+      const rootCauseFile = investigation.diagnosis?.rootCauseFile;
+      const rootCauseSymbol = investigation.diagnosis?.rootCauseSymbol;
+      const confidence = investigation.diagnosis?.confidence;
+      const isSufficient = confidence === 'HIGH' || confidence === 'MEDIUM';
+
+      // 1. API Entrypoint node
+      const entryStep = chain.find(c => c.type === 'ENTRYPOINT_SYMBOL') || chain[0];
+      const entryLabel = entryStep?.symbolName || entryStep?.calleeSymbol || entryStep?.label || 'API Entrypoint';
+      const entryFile = entryStep?.filePath || investigation.entryPoint || 'entrypoint';
+
+      realNodes.push({
+        id: 'node-entrypoint',
+        label: entryLabel,
+        filePath: entryFile,
+        lineRange: entryStep?.lineRange || 'L1',
+        type: 'entrypoint',
+        evidenceCategory: 'source_evidence',
+        role: 'API Entrypoint',
+        category: 'Source Evidence',
+        x: 95,
+        y: 220,
+        radius: 26,
+        color: '#8b5cf6',
+        bgColor: '#1e1438',
+        borderColor: '#a78bfa',
+        provenance: entryStep?.provenance || 'Repository Route AST',
+        details: entryStep?.details || `Execution entrypoint in ${entryFile}.`,
+        badge: 'Source Evidence'
+      });
+
+      // 2. Traversed call hops from evidenceChain
+      const callSteps = chain.filter(c => c.type === 'SYMBOL_CALLS_SYMBOL');
+      callSteps.forEach((callStep, idx) => {
+        const hopId = `node-hop-${idx + 1}`;
+        const isTarget = isSufficient && callStep.calleeSymbol === rootCauseSymbol && callStep.filePath === rootCauseFile;
+        const hopX = 280 + idx * 170;
+
+        realNodes.push({
+          id: hopId,
+          label: callStep.calleeSymbol || `Hop ${idx + 1}`,
+          filePath: callStep.filePath || 'dependency',
+          lineRange: callStep.lineRange || 'L1',
+          type: isTarget ? 'root_cause' : 'call_hop',
+          evidenceCategory: isTarget ? 'suspected_change' : 'inferred_relationship',
+          role: isTarget ? 'Leading Root-Cause Hypothesis' : 'Call Chain Dependency',
+          category: isTarget ? 'Leading Root-Cause Hypothesis' : 'Inferred Relationship',
+          x: hopX,
+          y: 220,
+          radius: isTarget ? 30 : 25,
+          color: isTarget ? '#f43f5e' : '#06b6d4',
+          bgColor: isTarget ? '#310a14' : '#082531',
+          borderColor: isTarget ? '#fb7185' : '#22d3ee',
+          provenance: callStep.provenance || 'AST Call Graph',
+          details: callStep.details || `Call relationship to ${callStep.calleeSymbol}.`,
+          badge: isTarget ? 'Suspected Target' : 'Inferred Hop',
+          pulse: isTarget
+        });
+
+        const prevId = idx === 0 ? 'node-entrypoint' : `node-hop-${idx}`;
+        realEdges.push({
+          id: `edge-hop-${idx + 1}`,
+          source: prevId,
+          target: hopId,
+          label: 'calls',
+          relationshipType: 'SYMBOL_CALLS_SYMBOL',
+          isCausal: isTarget,
+          color: isTarget ? '#f43f5e' : '#a78bfa',
+          style: 'solid',
+          provenance: callStep.provenance || 'AST Call Graph',
+          description: callStep.details || `Calls ${callStep.calleeSymbol}.`
+        });
+      });
+
+      // 3. Isolated root cause node if not matched in call hops
+      const hasRootNode = realNodes.some(n => n.type === 'root_cause');
+      if (!hasRootNode && rootCauseFile && rootCauseFile !== 'unknown' && isSufficient) {
+        const rootId = 'node-root-cause';
+        realNodes.push({
+          id: rootId,
+          label: rootCauseSymbol || 'Root Cause',
+          filePath: rootCauseFile,
+          type: 'root_cause',
+          evidenceCategory: 'suspected_change',
+          role: 'Leading Root-Cause Hypothesis',
+          category: 'Leading Root-Cause Hypothesis',
+          x: 495,
+          y: 220,
+          radius: 30,
+          color: '#f43f5e',
+          bgColor: '#310a14',
+          borderColor: '#fb7185',
+          provenance: 'FalkorDB Graph Traversal',
+          details: `Isolated root cause in ${rootCauseFile}.`,
+          badge: 'Suspected Target',
+          pulse: true
+        });
+
+        const lastNode = realNodes[realNodes.length - 2];
+        if (lastNode) {
+          realEdges.push({
+            id: 'edge-to-root',
+            source: lastNode.id,
+            target: rootId,
+            label: 'correlated',
+            relationshipType: 'SYMBOL_CALLS_SYMBOL',
+            isCausal: true,
+            color: '#f43f5e',
+            style: 'solid',
+            provenance: 'FalkorDB Graph Traversal',
+            description: `Correlated leading cause ${rootCauseSymbol}.`
+          });
+        }
+      }
+
+      // 4. Suspect commit node if present in real investigation
+      const suspectCommit = investigation.diagnosis?.suspectedIntroducingCommit || investigation.connectedEvidence?.matchingCommit;
+      if (suspectCommit?.sha) {
+        const commitId = 'node-commit';
+        realNodes.push({
+          id: commitId,
+          label: `Commit ${suspectCommit.shortSha || suspectCommit.sha.slice(0, 7)}`,
+          filePath: rootCauseFile || entryFile,
+          type: 'commit',
+          evidenceCategory: 'suspected_change',
+          role: 'Suspected Introducing Change',
+          category: 'Suspected Change',
+          x: 495,
+          y: 75,
+          radius: 22,
+          color: '#f59e0b',
+          bgColor: '#2a1a06',
+          borderColor: '#fbbf24',
+          provenance: 'Git History',
+          details: `Commit ${suspectCommit.shortSha || suspectCommit.sha.slice(0, 7)}: ${suspectCommit.message || 'Modified files in repository'}.`,
+          badge: 'Suspected Change'
+        });
+
+        const targetForCommit = realNodes.find(n => n.type === 'root_cause') || realNodes[realNodes.length - 2];
+        if (targetForCommit) {
+          realEdges.push({
+            id: 'edge-commit',
+            source: commitId,
+            target: targetForCommit.id,
+            label: 'modifies file',
+            relationshipType: 'COMMIT_CHANGED_FILE',
+            isCausal: false,
+            color: '#fbbf24',
+            style: 'dashed',
+            provenance: 'Git Delta',
+            description: `Commit modified ${targetForCommit.filePath}.`
+          });
+        }
+      }
+
+      // 5. Decoy / Keyword Baseline node if present
+      const decoyFile = investigation.keywordBaseline?.topSuspectFile;
+      if (decoyFile && decoyFile !== rootCauseFile && decoyFile !== 'unknown') {
+        const decoyId = 'node-decoy';
+        realNodes.push({
+          id: decoyId,
+          label: decoyFile.split('/').pop(),
+          filePath: decoyFile,
+          type: 'decoy',
+          evidenceCategory: 'uncertain_information',
+          role: 'Rejected Decoy (Keyword Match)',
+          category: 'Uncertain / Decoy',
+          x: 285,
+          y: 365,
+          radius: 22,
+          color: '#94a3b8',
+          bgColor: '#141a24',
+          borderColor: '#475569',
+          provenance: 'Lexical Match',
+          details: investigation.keywordBaseline?.limitation || 'Selected by lexical search but not verified in execution call path.',
+          badge: 'Decoy (Rejected)',
+          dashed: true
+        });
+
+        realEdges.push({
+          id: 'edge-decoy',
+          source: 'node-entrypoint',
+          target: decoyId,
+          label: 'keyword match (unreachable)',
+          relationshipType: 'LEXICAL_KEYWORD_TRAP',
+          isCausal: false,
+          color: '#64748b',
+          style: 'dotted',
+          provenance: 'Lexical Search',
+          description: 'Lexical overlap without AST call edge.'
+        });
+      }
+
+      // 6. Historical fix memory node if present
+      const priorFix = investigation.diagnosis?.historicalFix || investigation.connectedEvidence?.priorFixMatch;
+      if (priorFix) {
+        const memId = 'node-memory';
+        realNodes.push({
+          id: memId,
+          label: priorFix.title || 'Historical Fix Precedent',
+          filePath: priorFix.filePath || rootCauseFile || 'unknown',
+          type: 'memory',
+          evidenceCategory: 'historical_fix',
+          role: 'Historical Fix Precedent',
+          category: 'Historical Precedent',
+          x: 700,
+          y: 220,
+          radius: 26,
+          color: '#10b981',
+          bgColor: '#06261c',
+          borderColor: '#34d399',
+          provenance: 'FalkorDB Memory',
+          details: `Historical precedent: ${priorFix.summary || priorFix.fixSummary || 'Resolved prior incident'}.`,
+          badge: 'Historical Fix'
+        });
+
+        const targetForMem = realNodes.find(n => n.type === 'root_cause') || realNodes[realNodes.length - 2];
+        if (targetForMem) {
+          realEdges.push({
+            id: 'edge-memory',
+            source: targetForMem.id,
+            target: memId,
+            label: 'resolved previously',
+            relationshipType: 'FIX_RESOLVES_BUG',
+            isCausal: false,
+            color: '#34d399',
+            style: 'solid',
+            provenance: 'FalkorDB Memory',
+            description: 'Institutional fix precedent in FalkorDB.'
+          });
+        }
+      }
+
+      return { nodes: realNodes, edges: realEdges };
+    }
+
+    // Explicit Demo Scenario (acme/payment-gateway)
     const entryPointPath = investigation.entryPoint || 'server/routes/pay.js';
     const rootCauseFile = investigation.diagnosis?.rootCauseFile || 'services/tokenBucket.js';
     const rootCauseSymbol = investigation.diagnosis?.rootCauseSymbol || 'acquireTokenLock';
@@ -271,7 +514,7 @@ export default function CausalGraphCanvas({
   const edgeMap = useMemo(() => new Map(edges.map(e => [e.id, e])), [edges]);
 
   // Causal path node set
-  const causalNodeIds = useMemo(() => new Set(['node-entrypoint', 'node-hop', 'node-root-cause']), []);
+  const causalNodeIds = useMemo(() => new Set(nodes.filter(n => n.type === 'entrypoint' || n.type === 'call_hop' || n.type === 'root_cause').map(n => n.id)), [nodes]);
 
   // Determine dimming opacity for each node based on selection
   const getNodeOpacity = (nodeId) => {

@@ -1,5 +1,6 @@
 import express from 'express';
 import { sanitizeErrorMessage as sanitizeFalkorDBError } from '../db/falkordb.js';
+import { resolveProvider } from '../providers/registry.js';
 import {
   resolveGraphProvider,
   validateActiveGraphConfig,
@@ -81,12 +82,43 @@ memoryRouter.get('/overview', async (req, res) => {
   try {
     const repo = String(req.query.repo || '').trim();
     const query = String(req.query.q || '').trim();
+    const branch = String(req.query.branch || '').trim();
+    const revision = String(req.query.revision || '').trim();
+    const targetType = String(req.query.targetType || '').trim();
+    const targetId = String(req.query.targetId || '').trim();
 
     if (!repo || !repo.includes('/')) {
       return res.status(400).json({ error: 'Query parameter "repo" (owner/repo) is required.' });
     }
 
-    const overview = await getRepositoryOverview(repo, { query });
+    const sliceTarget = targetType && targetId ? { type: targetType, id: targetId } : null;
+
+    // Enrich memory graph with provider branches, PRs, and issues when available
+    let branches = [];
+    let pullRequests = [];
+    let issues = [];
+    try {
+      const adapter = resolveProvider(repo);
+      let parsed;
+      try {
+        parsed = adapter.parseUrl(repo);
+      } catch {
+        const parts = repo.split('/');
+        parsed = { owner: parts[0], repo: parts[1], fullName: repo, provider: adapter.name };
+      }
+      const [brRes, prRes, issRes] = await Promise.allSettled([
+        adapter.getBranches(parsed),
+        adapter.getPullRequests({ ...parsed, state: 'open', perPage: 8 }),
+        adapter.getIssues({ ...parsed, state: 'open', perPage: 8 })
+      ]);
+      if (brRes.status === 'fulfilled' && Array.isArray(brRes.value)) branches = brRes.value;
+      if (prRes.status === 'fulfilled' && Array.isArray(prRes.value)) pullRequests = prRes.value;
+      if (issRes.status === 'fulfilled' && Array.isArray(issRes.value)) issues = issRes.value;
+    } catch {
+      // Soft fail: graph falls back to pure FalkorDB entities
+    }
+
+    const overview = await getRepositoryOverview(repo, { query, branch, revision, sliceTarget, branches, pullRequests, issues });
     return res.json(overview);
   } catch (err) {
     return res.status(500).json({ error: sanitizeAnyError(err.message) });

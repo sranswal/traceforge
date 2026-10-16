@@ -467,12 +467,12 @@ export function adaptCausalSynthesis(investigation) {
 
   const suspectedIntroducingCommit = commitObj ? {
     sha: commitObj.sha || null,
-    shortSha: commitObj.shortSha || (commitObj.sha ? commitObj.sha.slice(0, 7) : '8f2a1b9'),
+    shortSha: commitObj.shortSha || (commitObj.sha ? commitObj.sha.slice(0, 7) : 'unspecified'),
     message: commitObj.message || 'Suspected regression refactor',
     roleLabel: 'Suspected Introducing Commit',
     role: 'suspected_introducing_change',
     affectedFile: rootCauseFile !== 'unknown' ? rootCauseFile : null,
-    details: `Commit ${commitObj.shortSha || (commitObj.sha ? commitObj.sha.slice(0, 7) : '8f2a1b9')} introduced changes in the call path leading to ${rootCauseSymbol !== 'unknown' ? rootCauseSymbol : 'downstream dependencies'}.`
+    details: `Commit ${commitObj.shortSha || (commitObj.sha ? commitObj.sha.slice(0, 7) : 'unspecified')} introduced changes in the call path leading to ${rootCauseSymbol !== 'unknown' ? rootCauseSymbol : 'downstream dependencies'}.`
   } : null;
 
   // 6. Historical Precedent
@@ -482,12 +482,12 @@ export function adaptCausalSynthesis(investigation) {
 
   const historicalPrecedent = fixObj ? {
     title: fixObj.title || 'Historical Bug Precedent',
-    fixSummary: fixObj.fixSummary || fixObj.summary || 'Non-blocking concurrency mitigation',
+    fixSummary: fixObj.fixSummary || fixObj.summary || 'Historical fix precedent',
     commitSha: fixObj.commitSha || null,
-    commitShortSha: fixObj.commitShortSha || (fixObj.commitSha ? fixObj.commitSha.slice(0, 7) : '7e1d4c2'),
+    commitShortSha: fixObj.commitShortSha || (fixObj.commitSha ? fixObj.commitSha.slice(0, 7) : null),
     roleLabel: 'Historical Fix Commit',
     source: 'FalkorDB Graph Memory',
-    details: fixObj.description || `Past incident "${fixObj.title || 'Starvation'}" was recorded in institutional memory as resolved in commit ${fixObj.commitShortSha || (fixObj.commitSha ? fixObj.commitSha.slice(0, 7) : '7e1d4c2')}.`
+    details: fixObj.description || `Past incident "${fixObj.title || 'Prior Bug'}" was recorded in institutional memory as resolved${fixObj.commitSha ? ` in commit ${fixObj.commitSha.slice(0, 7)}` : ''}.`
   } : null;
 
   // 7. Limitations and Verification Status
