@@ -316,14 +316,42 @@ export class BitbucketProviderAdapter extends BaseProviderAdapter {
 
   async getTree({ owner, repo, ref, recursive = true }, options = {}) {
     const targetRef = ref || 'HEAD';
-    const data = await this._fetchApi(`/repositories/${owner}/${repo}/src/${encodeURIComponent(targetRef)}/?pagelen=100`, options);
-    const values = data.values || [];
+    const perPage = Math.min(Math.max(Number(options.perPage) || 100, 1), 100);
+    const maxPages = Math.min(Math.max(Number(options.maxPages) || 10, 1), 50);
+    const maxItems = Math.min(Math.max(Number(options.maxItems) || 1500, 1), 5000);
+
+    const allItems = [];
+    let nextEndpoint = `/repositories/${owner}/${repo}/src/${encodeURIComponent(targetRef)}/?pagelen=${perPage}${recursive ? '&max_depth=10' : ''}`;
+    let pageCount = 0;
+
+    while (nextEndpoint && pageCount < maxPages && allItems.length < maxItems) {
+      pageCount += 1;
+      const data = await this._fetchApi(nextEndpoint, options);
+      const values = data.values || [];
+
+      if (!Array.isArray(values) || values.length === 0) {
+        break;
+      }
+
+      allItems.push(...values);
+      nextEndpoint = data.next || null;
+    }
+
+    const mappedTree = allItems.map(item => ({
+      path: item.path,
+      type: item.type === 'commit_directory' ? 'tree' : 'blob',
+      id: item.commit?.hash || null,
+      sha: item.commit?.hash || null,
+      name: item.path?.split('/').pop() || item.path,
+      mode: item.type === 'commit_directory' ? '040000' : '100644',
+      size: item.size || 0
+    }));
 
     return {
-      tree: values.map(item => ({
-        path: item.path,
-        type: item.type === 'commit_directory' ? 'tree' : 'blob'
-      }))
+      sha: targetRef,
+      tree: mappedTree,
+      truncated: Boolean(nextEndpoint) && allItems.length >= maxItems,
+      totalCount: mappedTree.length
     };
   }
 
@@ -335,7 +363,15 @@ export class BitbucketProviderAdapter extends BaseProviderAdapter {
     try {
       const treeRes = await this.getTree({ owner, repo, ref: targetBranch, recursive: true }, options);
       treeItems = treeRes.tree || [];
-    } catch {
+    } catch (err) {
+      if (
+        err.code === 'RATE_LIMITED' ||
+        err.code === 'UNAUTHORIZED' ||
+        err.code === 'FORBIDDEN' ||
+        err.code === 'NOT_FOUND_OR_PRIVATE'
+      ) {
+        throw err;
+      }
       treeItems = [];
     }
 
@@ -345,7 +381,12 @@ export class BitbucketProviderAdapter extends BaseProviderAdapter {
 
     for (const item of treeItems) {
       if (item.type === 'blob') {
-        files.push({ path: item.path, size: 0 });
+        files.push({
+          path: item.path,
+          size: item.size || 0,
+          id: item.id || null,
+          sha: item.sha || null
+        });
         const parts = item.path.split('/');
         const filename = parts[parts.length - 1];
         const dotIdx = filename.lastIndexOf('.');
@@ -358,12 +399,49 @@ export class BitbucketProviderAdapter extends BaseProviderAdapter {
       }
     }
 
+    // Fetch important manifests
+    const importantFilesToFetch = [
+      'package.json',
+      'pom.xml',
+      'build.gradle',
+      'CMakeLists.txt',
+      'Cargo.toml',
+      'go.mod',
+      'requirements.txt',
+      'pyproject.toml',
+      'Dockerfile',
+      'docker-compose.yml',
+      'docker-compose.yaml',
+      'README.md',
+      'readme.md',
+      '.env.example'
+    ];
+
+    const manifests = {};
+    const filePaths = files.map(f => f.path);
+
+    const fetchPromises = importantFilesToFetch
+      .filter(targetFile => filePaths.some(p => p === targetFile || p.endsWith('/' + targetFile)))
+      .slice(0, 8)
+      .map(async (targetFile) => {
+        const actualPath = filePaths.find(p => p === targetFile) || filePaths.find(p => p.endsWith('/' + targetFile));
+        if (!actualPath) return;
+        try {
+          const content = await this.getFileContent({ owner, repo, path: actualPath, ref: targetBranch }, options);
+          manifests[actualPath] = content;
+        } catch {
+          // Soft fail on individual manifest
+        }
+      });
+
     const [branchesRes, commitsRes, issuesRes, pullsRes] = await Promise.allSettled([
       this.getBranches({ owner, repo }, options),
       this.getCommits({ owner, repo, branch: targetBranch, perPage: 5 }, options),
       this.getIssues({ owner, repo, state: 'open', perPage: 5 }, options),
       this.getPullRequests({ owner, repo, state: 'OPEN', perPage: 5 }, options)
     ]);
+
+    await Promise.allSettled(fetchPromises);
 
     const branches = branchesRes.status === 'fulfilled' ? branchesRes.value : [];
     const commits = commitsRes.status === 'fulfilled' ? commitsRes.value : [];
@@ -375,7 +453,7 @@ export class BitbucketProviderAdapter extends BaseProviderAdapter {
       files,
       directories: Array.from(directories),
       extensions,
-      manifests: {},
+      manifests,
       totalFiles: files.length,
       totalDirectories: directories.size,
       providerData: {

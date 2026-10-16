@@ -316,6 +316,8 @@ export default function ProjectMemoryTab({
     relationships: 0
   };
 
+  const totalFilesCount = analysisData?.metrics?.totalFiles ?? counts.files ?? (analysisData?.aiContextReady?.filePaths?.length || 0);
+
   const availableComponents = useMemo(() => {
     const dirs = (analysisData?.structure?.classifiedDirectories || []).map(d =>
       d.path.replace(/^\/+/, '')
@@ -623,6 +625,11 @@ export default function ProjectMemoryTab({
     const fileSymbols = (memoryOverview?.symbols || []).filter(s => s.filePath === cleanPath);
     const ext = cleanPath.includes('.') ? '.' + cleanPath.split('.').pop() : 'None';
     const topComp = cleanPath.includes('/') ? cleanPath.split('/')[0] : 'root';
+    const providerNameClean = String(
+      analysisData?.repository?.provider ||
+      (repoFullName.toLowerCase().includes('gitlab') ? 'GitLab' : 'GitHub')
+    );
+    const providerLabel = providerNameClean.charAt(0).toUpperCase() + providerNameClean.slice(1);
 
     setCustomEntity({
       id: `${repoFullName}::${isDir ? 'component' : 'file'}::${cleanPath}`,
@@ -632,18 +639,20 @@ export default function ProjectMemoryTab({
       subtitle: isDir
         ? treeNodeOrPath.role || 'Repository Directory'
         : `Source File (${ext})`,
-      provenance: 'Repository Scan (Git Trees API)',
+      provenance: `${providerLabel} Repository Scan (Git Trees API)`,
       details: isDir
         ? {
             path: cleanPath,
             role: treeNodeOrPath.role || 'Directory',
-            indexedFiles: treeNodeOrPath.fileCount || 0
+            indexedFiles: treeNodeOrPath.fileCount || 0,
+            repoFullName
           }
         : {
             path: cleanPath,
             extension: ext,
             size: treeNodeOrPath.size ? `${(treeNodeOrPath.size / 1024).toFixed(1)} KB` : 'Scanned via Git Tree',
             component: topComp,
+            repoFullName,
             extractedSymbolsCount: fileSymbols.length,
             extractedSymbols: fileSymbols.map(s => `${s.name} (L${s.startLine}-L${s.endLine})`).join(', ') || 'None extracted'
           }
@@ -1289,7 +1298,7 @@ export default function ProjectMemoryTab({
                   }`}
                 >
                   <FolderTree className="w-3.5 h-3.5" />
-                  <span>Repository Files ({analysisData?.metrics?.totalFiles || 0})</span>
+                  <span>Repository Files ({totalFilesCount})</span>
                 </button>
               </div>
 
@@ -1717,8 +1726,38 @@ export default function ProjectMemoryTab({
                   />
                 ))
               ) : (
-                <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500">
-                  No repository files matching "{graphSearch}".
+                <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500 space-y-2">
+                  {graphSearch.trim() ? (
+                    <p>No repository files matching "{graphSearch}".</p>
+                  ) : isLoadingMemory ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+                      <p className="font-medium text-slate-600 dark:text-slate-300">Indexing repository files...</p>
+                    </div>
+                  ) : analysisData?.indexing?.status === 'unindexed' ? (
+                    <div className="space-y-1">
+                      <p className="font-semibold text-slate-700 dark:text-slate-300">Repository files not indexed yet</p>
+                      <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                        Repository structure indexing has not run. Click "Sync Graph" to initiate file and symbol indexing.
+                      </p>
+                    </div>
+                  ) : analysisData?.indexing?.status === 'error' || memoryError ? (
+                    <div className="space-y-1 text-red-600 dark:text-red-400">
+                      <p className="font-semibold">Repository file indexing failed</p>
+                      <p className="text-xs text-red-500 dark:text-red-300 max-w-sm mx-auto">
+                        {analysisData?.indexing?.error || memoryError || 'An error occurred during repository indexing.'}
+                      </p>
+                    </div>
+                  ) : totalFilesCount === 0 ? (
+                    <div className="space-y-1">
+                      <p className="font-semibold text-slate-700 dark:text-slate-300">Repository is empty</p>
+                      <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                        The repository was indexed successfully, but the tree contains no files.
+                      </p>
+                    </div>
+                  ) : (
+                    <p>No repository files available.</p>
+                  )}
                 </div>
               )}
             </div>

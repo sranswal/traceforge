@@ -93,12 +93,16 @@ memoryRouter.get('/overview', async (req, res) => {
 
     const sliceTarget = targetType && targetId ? { type: targetType, id: targetId } : null;
 
+    const providerParam = String(req.query.provider || '').trim();
+
     // Enrich memory graph with provider branches, PRs, and issues when available
     let branches = [];
     let pullRequests = [];
     let issues = [];
+    let providerName = 'github';
     try {
-      const adapter = resolveProvider(repo);
+      const adapter = resolveProvider(providerParam || repo);
+      providerName = adapter.name || 'github';
       let parsed;
       try {
         parsed = adapter.parseUrl(repo);
@@ -118,7 +122,16 @@ memoryRouter.get('/overview', async (req, res) => {
       // Soft fail: graph falls back to pure FalkorDB entities
     }
 
-    const overview = await getRepositoryOverview(repo, { query, branch, revision, sliceTarget, branches, pullRequests, issues });
+    const overview = await getRepositoryOverview(repo, {
+      query,
+      branch,
+      revision,
+      sliceTarget,
+      branches,
+      pullRequests,
+      issues,
+      repoProvider: providerName
+    });
     return res.json(overview);
   } catch (err) {
     return res.status(500).json({ error: sanitizeAnyError(err.message) });

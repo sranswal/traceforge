@@ -52,12 +52,12 @@ TraceForge pairs a high-performance **FalkorDB** graph engine with **Repository 
                                 │                   │                │
                 Cypher Retrieval│    Git Provider   │                │ Grounded Prompts
                                 ▼    API (Octokit)  ▼                ▼
-     ┌────────────────────────────┐ ┌──────────────────────┐ ┌───────────────────────────┐
-     │ FalkorDB Graph Engine      │ │ Provider Adapters    │ │ Google Gemini Failover    │
-     │ Client: falkordb           │ │ - GitHubAdapter      │ │ (gemini-3.8-flash ->      │
-     │ openCypher Traversals      │ │ - MockAdapter        │ │  gemini-3.6-flash ->      │
-     │ Call graphs & memories     │ │ Branches, PRs, Diffs │ │  gemini-3.5-flash-lite)   │
-     └────────────────────────────┘ └──────────────────────┘ └───────────────────────────┘
+     ┌────────────────────────────┐ ┌───────────────────────────┐ ┌───────────────────────────┐
+     │ FalkorDB Graph Engine      │ │ Provider Adapters         │ │ Google Gemini Failover    │
+     │ Client: falkordb           │ │ - GitHubAdapter           │ │ (gemini-3.8-flash ->      │
+     │ openCypher Traversals      │ │ - GitLabAdapter           │ │  gemini-3.6-flash ->      │
+     │ Call graphs & memories     │ │ - BitbucketAdapter        │ │  gemini-3.5-flash-lite)   │
+     └────────────────────────────┘ └───────────────────────────┘ └───────────────────────────┘
 ```
 
 ### Connected Graph Schema
@@ -152,13 +152,18 @@ cp .env.example .env
 Set the following variables in `.env`:
 ```env
 # FalkorDB Configuration (Primary Graph Backend)
-GRAPH_PROVIDER=falkordb
+GRAPH_DATABASE_PROVIDER=falkordb
 FALKORDB_HOST=localhost
 FALKORDB_PORT=6379
 FALKORDB_GRAPH=traceforge
 
 # Gemini AI Key (for architectural reasoning)
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# Optional: Provider tokens for higher API rate limits or private repos
+# GITHUB_TOKEN=your_github_token
+# GITLAB_TOKEN=your_gitlab_token
+# BITBUCKET_TOKEN=your_bitbucket_token
 ```
 
 ### 4. Run Development Server
@@ -176,7 +181,7 @@ Follow this script to deliver an impactful presentation to hackathon judges:
 
 ### Scene 1: Real-World Repository Overview (1:00)
 1. Open `http://localhost:3000`. The browser displays **TraceForge** on the **Repository Overview** tab.
-2. Note the repository switcher and identity card displaying live repository branches, open issues, and pull requests.
+2. Note the repository switcher and identity card displaying live repository branches, open issues, and pull requests across GitHub, GitLab, and Bitbucket.
 3. Locate **PR #12: "Implement non-blocking acquireTokenLock with timeout"** in the Active Pull Requests section.
 4. Click **"Investigate"** on the PR card. Notice TraceForge transitions seamlessly to the **Incident Investigation** tab in **PR Review** mode.
 
@@ -212,10 +217,10 @@ Follow this script to deliver an impactful presentation to hackathon judges:
 
 ## 6. Test Suite & Verification
 
-TraceForge includes **137 comprehensive automated tests across 19 suites** with a 100% pass rate.
+TraceForge includes **176 comprehensive automated tests across 26 suites** with a 100% pass rate.
 
 ```bash
-# Run the complete test suite (137 tests across 19 suites)
+# Run the complete test suite (176 tests across 26 suites)
 npm test
 
 # Run unit and mock graph tests

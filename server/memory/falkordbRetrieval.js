@@ -62,7 +62,9 @@ export function buildInteractiveGraphSubgraph(repoFullName, {
   branches = [],
   pullRequests = [],
   issues = [],
-  sliceTarget = null
+  sliceTarget = null,
+  provider = null,
+  repoProvider = null
 } = {}) {
   const nodesMap = new Map();
   const edges = [];
@@ -92,15 +94,21 @@ export function buildInteractiveGraphSubgraph(repoFullName, {
     });
   }
 
+  const activeProvider = repoProvider || (provider !== 'falkordb' ? provider : null);
+  const isGitLab = (activeProvider && activeProvider.toLowerCase() === 'gitlab') || repoFullName.includes('gitlab');
+  const isBitbucket = (activeProvider && activeProvider.toLowerCase() === 'bitbucket') || repoFullName.includes('bitbucket');
+  const providerLabel = isGitLab ? 'GitLab' : isBitbucket ? 'Bitbucket' : 'GitHub';
+
   const repoId = GraphIds.repository(repoFullName);
   addNode({
     id: repoId,
     label: 'Repository',
     title: repoFullName,
-    subtitle: 'GitHub Repository Root',
-    provenance: 'Repository Scan',
+    subtitle: `${providerLabel} Repository Root`,
+    provenance: `${providerLabel} Repository Scan`,
     details: {
       fullName: repoFullName,
+      provider: providerLabel.toLowerCase(),
       entityType: 'Repository'
     }
   });
@@ -1273,7 +1281,8 @@ export async function getFalkorDBRepositoryMemoryOverview(repoFullNameInput, opt
       branches: options.branches || [],
       pullRequests: options.pullRequests || [],
       issues: options.issues || [],
-      sliceTarget: options.sliceTarget || null
+      sliceTarget: options.sliceTarget || null,
+      repoProvider: options.repoProvider || (options.provider !== 'falkordb' ? options.provider : null)
     });
 
     return {

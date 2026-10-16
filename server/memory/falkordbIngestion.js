@@ -511,7 +511,8 @@ export function buildProjectMemoryGraphPayload(analysis, {
       branch: repo.branch || 'main',
       primaryLanguage: repo.primaryLanguage || 'Unknown',
       description: repo.description || '',
-      url: repo.url || `https://github.com/${repoFullName}`,
+      url: repo.url || (repo.provider === 'gitlab' ? `https://gitlab.com/${repoFullName}` : repo.provider === 'bitbucket' ? `https://bitbucket.org/${repoFullName}` : `https://github.com/${repoFullName}`),
+      provider: repo.provider || (repoFullName.includes('gitlab') ? 'gitlab' : repoFullName.includes('bitbucket') ? 'bitbucket' : 'github'),
       projectType: analysis?.projectType || 'Software Repository',
       architecturePattern: analysis?.architecture?.pattern || 'Layered Architecture'
     },
@@ -566,6 +567,7 @@ export async function persistFalkorDBMemoryPayload(payload, options = {}) {
          r.url = $repo.url,
          r.projectType = $repo.projectType,
          r.architecturePattern = $repo.architecturePattern,
+         r.provider = $repo.provider,
          r.updatedAt = $updatedAt`,
     { repo: repositoryNode, updatedAt: isoTimestamp },
     options

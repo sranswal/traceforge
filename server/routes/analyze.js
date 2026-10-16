@@ -5,7 +5,7 @@ export const analyzeRouter = express.Router();
 
 analyzeRouter.post('/analyze', async (req, res) => {
   try {
-    const { url } = req.body;
+    const url = req.body.url || req.body.repoUrl;
 
     if (!url) {
       return res.status(400).json({ error: 'GitHub repository URL is required.' });

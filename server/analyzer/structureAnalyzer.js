@@ -98,8 +98,8 @@ export function analyzeStructure(scan) {
     const parts = file.path.split('/');
     let current = treeRoot;
 
-    // Only process up to 3 segments deep for the overview tree
-    const maxDepth = Math.min(parts.length, 3);
+    // Process up to 8 segments deep for complete file tree navigation
+    const maxDepth = Math.min(parts.length, 8);
     for (let i = 0; i < maxDepth; i++) {
       const part = parts[i];
       const isFile = (i === parts.length - 1);

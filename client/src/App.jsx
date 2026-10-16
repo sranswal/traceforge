@@ -111,7 +111,8 @@ export default function App() {
     setMemoryError(null);
 
     try {
-      const res = await fetch(`/api/memory/overview?repo=${encodeURIComponent(targetRepo)}`);
+      const providerParam = analysisData?.repository?.provider ? `&provider=${encodeURIComponent(analysisData.repository.provider)}` : '';
+      const res = await fetch(`/api/memory/overview?repo=${encodeURIComponent(targetRepo)}${providerParam}`);
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Failed to load project memory overview.');

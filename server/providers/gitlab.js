@@ -45,13 +45,14 @@ export class GitLabProviderAdapter extends BaseProviderAdapter {
    * Encodes a repository path (owner/repo or group/subgroup/repo) for GitLab v4 API.
    */
   _encodeProjectPath(owner, repo) {
-    return encodeURIComponent(`${owner}/${repo}`);
+    const full = repo ? `${owner}/${repo}` : String(owner || '');
+    return encodeURIComponent(full.replace(/^\/+|\/+$/g, ''));
   }
 
   /**
-   * Performs fetch against GitLab API with structured error classification.
+   * Performs fetch against GitLab API with structured error classification and returns response metadata.
    */
-  async _fetchApi(endpoint, { token, rawResponse = false } = {}) {
+  async _fetchApiWithMeta(endpoint, { token, rawResponse = false } = {}) {
     const { headers, activeToken } = this._getHeaders(token);
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}/api/v4${endpoint}`;
 
@@ -110,15 +111,39 @@ export class GitLabProviderAdapter extends BaseProviderAdapter {
       }
 
       if (rawResponse) {
-        return await res.text();
+        return { data: await res.text(), headers: {} };
       }
-      return await res.json();
+
+      const data = await res.json();
+      const getHeader = (h) => (res.headers?.get ? res.headers.get(h) : res.headers ? res.headers[h] : null);
+      const nextPageHeader = getHeader('x-next-page');
+      const totalPagesHeader = getHeader('x-total-pages');
+      const totalHeader = getHeader('x-total');
+      const linkHeader = getHeader('link');
+
+      return {
+        data,
+        headers: {
+          nextPage: nextPageHeader && String(nextPageHeader).trim() ? Number(nextPageHeader) : null,
+          totalPages: totalPagesHeader && String(totalPagesHeader).trim() ? Number(totalPagesHeader) : null,
+          total: totalHeader && String(totalHeader).trim() ? Number(totalHeader) : null,
+          link: linkHeader || null
+        }
+      };
     } catch (err) {
       if (err.code) throw err;
       const safeErr = new Error(this._sanitizeError(err.message, activeToken));
       safeErr.code = 'NETWORK_ERROR';
       throw safeErr;
     }
+  }
+
+  /**
+   * Performs fetch against GitLab API with structured error classification.
+   */
+  async _fetchApi(endpoint, options = {}) {
+    const res = await this._fetchApiWithMeta(endpoint, options);
+    return res.data;
   }
 
   parseUrl(url) {
@@ -318,20 +343,67 @@ export class GitLabProviderAdapter extends BaseProviderAdapter {
 
   async getTree({ owner, repo, ref, recursive = true }, options = {}) {
     const projectPath = this._encodeProjectPath(owner, repo);
-    const query = new URLSearchParams({
-      per_page: '100',
-      recursive: recursive ? 'true' : 'false'
-    });
-    if (ref) query.set('ref', ref);
+    const perPage = Math.min(Math.max(Number(options.perPage) || 100, 1), 100);
+    const maxPages = Math.min(Math.max(Number(options.maxPages) || 10, 1), 50);
+    const maxItems = Math.min(Math.max(Number(options.maxItems) || 1500, 1), 5000);
 
-    const items = await this._fetchApi(`/projects/${projectPath}/repository/tree?${query.toString()}`, options);
-    if (!Array.isArray(items)) return { tree: [] };
+    const allItems = [];
+    let currentPage = Number(options.page) || 1;
+    let hasMore = true;
+
+    while (hasMore && currentPage <= maxPages && allItems.length < maxItems) {
+      const query = new URLSearchParams({
+        per_page: String(perPage),
+        page: String(currentPage),
+        recursive: recursive ? 'true' : 'false'
+      });
+      if (ref) query.set('ref', ref);
+
+      const { data, headers } = await this._fetchApiWithMeta(
+        `/projects/${projectPath}/repository/tree?${query.toString()}`,
+        options
+      );
+
+      if (!Array.isArray(data) || data.length === 0) {
+        break;
+      }
+
+      allItems.push(...data);
+
+      // Check pagination headers: x-next-page or Link header
+      let nextPageNum = null;
+      if (headers?.nextPage) {
+        nextPageNum = headers.nextPage;
+      } else if (headers?.link) {
+        const match = headers.link.match(/[?&]page=(\d+)[^>]*>;\s*rel="next"/);
+        if (match) {
+          nextPageNum = Number(match[1]);
+        }
+      }
+
+      if (nextPageNum && nextPageNum > currentPage) {
+        currentPage = nextPageNum;
+      } else if (data.length === perPage && (!headers?.totalPages || currentPage < headers.totalPages)) {
+        currentPage += 1;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    const mappedTree = allItems.map(item => ({
+      path: item.path,
+      type: item.type === 'tree' ? 'tree' : 'blob',
+      id: item.id || null,
+      sha: item.id || null,
+      name: item.name || item.path.split('/').pop(),
+      mode: item.mode || (item.type === 'tree' ? '040000' : '100644')
+    }));
 
     return {
-      tree: items.map(item => ({
-        path: item.path,
-        type: item.type === 'tree' ? 'tree' : 'blob'
-      }))
+      sha: ref || null,
+      tree: mappedTree,
+      truncated: hasMore && allItems.length >= maxItems,
+      totalCount: mappedTree.length
     };
   }
 
@@ -343,7 +415,15 @@ export class GitLabProviderAdapter extends BaseProviderAdapter {
     try {
       const treeRes = await this.getTree({ owner, repo, ref: targetBranch, recursive: true }, options);
       treeItems = treeRes.tree || [];
-    } catch {
+    } catch (err) {
+      if (
+        err.code === 'RATE_LIMITED' ||
+        err.code === 'UNAUTHORIZED' ||
+        err.code === 'FORBIDDEN' ||
+        err.code === 'NOT_FOUND_OR_PRIVATE'
+      ) {
+        throw err;
+      }
       treeItems = [];
     }
 
@@ -353,7 +433,12 @@ export class GitLabProviderAdapter extends BaseProviderAdapter {
 
     for (const item of treeItems) {
       if (item.type === 'blob') {
-        files.push({ path: item.path, size: 0 });
+        files.push({
+          path: item.path,
+          size: item.size || 0,
+          id: item.id || null,
+          sha: item.sha || null
+        });
         const parts = item.path.split('/');
         const filename = parts[parts.length - 1];
         const dotIdx = filename.lastIndexOf('.');
@@ -366,12 +451,49 @@ export class GitLabProviderAdapter extends BaseProviderAdapter {
       }
     }
 
+    // Fetch important manifests (like package.json, CMakeLists.txt, README.md, etc.)
+    const importantFilesToFetch = [
+      'package.json',
+      'CMakeLists.txt',
+      'Cargo.toml',
+      'go.mod',
+      'requirements.txt',
+      'pyproject.toml',
+      'pom.xml',
+      'build.gradle',
+      'Dockerfile',
+      'docker-compose.yml',
+      'docker-compose.yaml',
+      'README.md',
+      'readme.md',
+      '.env.example'
+    ];
+
+    const manifests = {};
+    const filePaths = files.map(f => f.path);
+
+    const fetchPromises = importantFilesToFetch
+      .filter(targetFile => filePaths.some(p => p === targetFile || p.endsWith('/' + targetFile)))
+      .slice(0, 8)
+      .map(async (targetFile) => {
+        const actualPath = filePaths.find(p => p === targetFile) || filePaths.find(p => p.endsWith('/' + targetFile));
+        if (!actualPath) return;
+        try {
+          const content = await this.getFileContent({ owner, repo, path: actualPath, ref: targetBranch }, options);
+          manifests[actualPath] = content;
+        } catch {
+          // Soft fail on individual manifest
+        }
+      });
+
     const [branchesRes, commitsRes, issuesRes, pullsRes] = await Promise.allSettled([
       this.getBranches({ owner, repo }, options),
       this.getCommits({ owner, repo, branch: targetBranch, perPage: 5 }, options),
       this.getIssues({ owner, repo, state: 'opened', perPage: 5 }, options),
       this.getPullRequests({ owner, repo, state: 'opened', perPage: 5 }, options)
     ]);
+
+    await Promise.allSettled(fetchPromises);
 
     const branches = branchesRes.status === 'fulfilled' ? branchesRes.value : [];
     const commits = commitsRes.status === 'fulfilled' ? commitsRes.value : [];
@@ -383,7 +505,7 @@ export class GitLabProviderAdapter extends BaseProviderAdapter {
       files,
       directories: Array.from(directories),
       extensions,
-      manifests: {},
+      manifests,
       totalFiles: files.length,
       totalDirectories: directories.size,
       providerData: {
