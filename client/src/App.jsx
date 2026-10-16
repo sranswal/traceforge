@@ -8,6 +8,7 @@ import ArchitectureTab from './components/Tabs/ArchitectureTab';
 import ProjectMemoryTab from './components/Tabs/ProjectMemoryTab';
 import IncidentInvestigationTab from './components/Tabs/IncidentInvestigationTab';
 import AskCodebaseTab from './components/Tabs/AskCodebaseTab';
+import ErrorBoundary from './components/ErrorBoundary';
 import { buildCompactAnalysisPayload } from './utils/analysisPayload';
 
 const SESSION_ANALYSIS_KEY = 'traceforge_last_analysis';
@@ -512,67 +513,69 @@ export default function App() {
         {/* State C: Active Repository Workspace with Tabs */}
         {analysisData && !isLoading && (
           <div className="animate-in fade-in duration-200">
-            {activeTab === 'overview' && (
-              <OverviewTab
-                analysisData={analysisData}
-                memoryOverview={memoryOverview}
-                summary={summary}
-                summaryMeta={summaryMeta}
-                isGeneratingSummary={isGeneratingSummary}
-                summaryError={summaryError}
-                onGenerateSummary={handleGenerateSummary}
-                onNavigateToTab={setActiveTab}
-              />
-            )}
+            <ErrorBoundary key={activeTab}>
+              {activeTab === 'overview' && (
+                <OverviewTab
+                  analysisData={analysisData}
+                  memoryOverview={memoryOverview}
+                  summary={summary}
+                  summaryMeta={summaryMeta}
+                  isGeneratingSummary={isGeneratingSummary}
+                  summaryError={summaryError}
+                  onGenerateSummary={handleGenerateSummary}
+                  onNavigateToTab={setActiveTab}
+                />
+              )}
 
-            {activeTab === 'architecture' && (
-              <ArchitectureTab analysisData={analysisData} />
-            )}
+              {activeTab === 'architecture' && (
+                <ArchitectureTab analysisData={analysisData} />
+              )}
 
-            {activeTab === 'memory' && (
-              <ProjectMemoryTab
-                analysisData={analysisData}
-                memoryOverview={memoryOverview}
-                graphHealth={graphHealth}
-                isLoadingMemory={isLoadingMemory}
-                memoryError={memoryError}
-                onRefreshMemory={() => fetchMemoryOverview(analysisData.repository?.fullName)}
-                onAskInCodebase={handleAskFromMemory}
-              />
-            )}
+              {activeTab === 'memory' && (
+                <ProjectMemoryTab
+                  analysisData={analysisData}
+                  memoryOverview={memoryOverview}
+                  graphHealth={graphHealth}
+                  isLoadingMemory={isLoadingMemory}
+                  memoryError={memoryError}
+                  onRefreshMemory={() => fetchMemoryOverview(analysisData.repository?.fullName)}
+                  onAskInCodebase={handleAskFromMemory}
+                />
+              )}
 
-            {activeTab === 'incident' && (
-              <IncidentInvestigationTab
-                analysisData={analysisData}
-                memoryOverview={memoryOverview}
-                graphHealth={graphHealth}
-                onNavigateToTab={(tab, options) => {
-                  if (options) {
-                    handleAskFromIncident(options);
-                  } else {
-                    setActiveTab(tab);
-                  }
-                }}
-                onAskInCodebase={handleAskFromIncident}
-                onRefreshMemory={(targetRepo) => fetchMemoryOverview(targetRepo || analysisData?.repository?.fullName)}
-              />
-            )}
+              {activeTab === 'incident' && (
+                <IncidentInvestigationTab
+                  analysisData={analysisData}
+                  memoryOverview={memoryOverview}
+                  graphHealth={graphHealth}
+                  onNavigateToTab={(tab, options) => {
+                    if (options) {
+                      handleAskFromIncident(options);
+                    } else {
+                      setActiveTab(tab);
+                    }
+                  }}
+                  onAskInCodebase={handleAskFromIncident}
+                  onRefreshMemory={(targetRepo) => fetchMemoryOverview(targetRepo || analysisData?.repository?.fullName)}
+                />
+              )}
 
-            {activeTab === 'ask' && (
-              <AskCodebaseTab
-                analysisData={analysisData}
-                memoryOverview={memoryOverview}
-                qaHistory={qaHistory}
-                onAskQuestion={handleAskQuestion}
-                isAsking={isAsking}
-                qaError={qaError}
-                onClearHistory={handleClearQA}
-                onRefreshMemory={() => fetchMemoryOverview(analysisData.repository?.fullName)}
-                onNavigateToTab={setActiveTab}
-                investigationTarget={investigationTarget}
-                onClearInvestigationTarget={() => setInvestigationTarget(null)}
-              />
-            )}
+              {activeTab === 'ask' && (
+                <AskCodebaseTab
+                  analysisData={analysisData}
+                  memoryOverview={memoryOverview}
+                  qaHistory={qaHistory}
+                  onAskQuestion={handleAskQuestion}
+                  isAsking={isAsking}
+                  qaError={qaError}
+                  onClearHistory={handleClearQA}
+                  onRefreshMemory={() => fetchMemoryOverview(analysisData.repository?.fullName)}
+                  onNavigateToTab={setActiveTab}
+                  investigationTarget={investigationTarget}
+                  onClearInvestigationTarget={() => setInvestigationTarget(null)}
+                />
+              )}
+            </ErrorBoundary>
           </div>
         )}
       </main>

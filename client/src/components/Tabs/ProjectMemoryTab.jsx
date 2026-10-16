@@ -645,30 +645,34 @@ export default function ProjectMemoryTab({
     }
     const xs = positionedGraph.nodes.map(n => n.x);
     const ys = positionedGraph.nodes.map(n => n.y);
-    const minX = Math.min(...xs) - 50;
-    const maxX = Math.max(...xs) + 50;
-    const minY = Math.min(...ys) - 50;
-    const maxY = Math.max(...ys) + 50;
-    const graphW = Math.max(maxX - minX, 120);
-    const graphH = Math.max(maxY - minY, 120);
-    const scale = Math.min(Math.max(Math.min(840 / graphW, 520 / graphH), 0.5), 2.0);
+    const minX = Math.min(...xs) - 60;
+    const maxX = Math.max(...xs) + 60;
+    const minY = Math.min(...ys) - 60;
+    const maxY = Math.max(...ys) + 60;
+    const graphW = Math.max(maxX - minX, 140);
+    const graphH = Math.max(maxY - minY, 140);
+    const scale = Math.min(Math.max(Math.min((840 - 60) / graphW, (520 - 60) / graphH), 0.5), 1.8);
     const midX = (minX + maxX) / 2;
     const midY = (minY + maxY) / 2;
     setZoom(Number(scale.toFixed(2)));
     setPan({
-      x: Math.round(420 - midX * scale),
-      y: Math.round(260 - midY * scale)
+      x: Math.round((420 - midX) * scale),
+      y: Math.round((260 - midY) * scale)
     });
   };
 
-  const handleCenterOnNode = (node) => {
-    if (!node) return;
+  const handleCenterOnNode = (nodeOrId) => {
+    if (!nodeOrId) return;
+    const node = typeof nodeOrId === 'object'
+      ? nodeOrId
+      : (positionedGraph.nodeById?.get(nodeOrId) || activeNode);
+    if (!node || typeof node.x !== 'number') return;
     setSelectedNodeId(node.id);
     setSelectedEdgeId(null);
     setCustomEntity(null);
     setPan({
-      x: Math.round(420 - node.x * zoom),
-      y: Math.round(260 - node.y * zoom)
+      x: Math.round((420 - node.x) * zoom),
+      y: Math.round((260 - node.y) * zoom)
     });
   };
 
@@ -1399,7 +1403,7 @@ export default function ProjectMemoryTab({
               {positionedGraph.nodes.length > 0 ? (
                 <svg
                   ref={svgRef}
-                  viewBox="0 0 760 480"
+                  viewBox="0 0 840 520"
                   className={`w-full h-[460px] sm:h-[520px] ${activeDragNodeId ? 'cursor-grabbing' : isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                   onWheel={handleSvgWheel}
                   onMouseDown={handleMouseDown}
@@ -1450,7 +1454,7 @@ export default function ProjectMemoryTab({
                   <rect width="100%" height="100%" fill="url(#mem-explorer-grid)" />
 
                   <g
-                    transform={`translate(${pan.x + 380 * (1 - zoom)}, ${pan.y + 240 * (1 - zoom)}) scale(${zoom})`}
+                    transform={`translate(${pan.x + 420 * (1 - zoom)}, ${pan.y + 260 * (1 - zoom)}) scale(${zoom})`}
                   >
                     {/* Edges */}
                     {positionedGraph.edges.map((edge) => {
@@ -1476,6 +1480,7 @@ export default function ProjectMemoryTab({
                           }}
                           className="cursor-pointer"
                         >
+                          <title>{`${edge.sourceNode.title} → [${edge.type}] → ${edge.targetNode.title}`}</title>
                           {/* Invisible wider hit line for easy clicking */}
                           <line
                             x1={edge.sourceNode.x}
@@ -1499,7 +1504,7 @@ export default function ProjectMemoryTab({
                             }
                             strokeWidth={isSelectedEdge || isIncidentToActive ? 2.5 : 1.4}
                             strokeDasharray={isRecordedEdge ? '5,3' : undefined}
-                            strokeOpacity={isDimmed ? 0.18 : 0.85}
+                            strokeOpacity={isDimmed ? 0.12 : 0.85}
                             markerEnd={
                               isSelectedEdge || isIncidentToActive
                                 ? 'url(#arrow-active)'
@@ -1554,8 +1559,9 @@ export default function ProjectMemoryTab({
                             setSelectedNodeId(node.id);
                           }}
                           className="cursor-pointer transition-opacity"
-                          style={{ opacity: isDimmed ? 0.25 : 1 }}
+                          style={{ opacity: isDimmed ? 0.18 : 1 }}
                         >
+                          <title>{`${node.title} (${lbl})\nType: ${lbl}\nProvenance: ${node.provenance || 'Source Analysis'}\nClick to inspect entity & 1-hop relationships`}</title>
                           {/* Selected / Neighbor Halo Rings */}
                           {isSelected && (
                             <circle
@@ -1599,11 +1605,11 @@ export default function ProjectMemoryTab({
                                 ? 'fill-violet-700 dark:fill-cyan-400 font-bold'
                                 : isNeighbor
                                   ? 'fill-slate-900 dark:fill-slate-100 font-semibold'
-                                  : 'fill-slate-700 dark:fill-slate-300'
+                                  : 'fill-slate-700 dark:fill-slate-400'
                             }`}
                           >
-                            {node.title?.length > 22
-                              ? `${node.title.slice(0, 20)}…`
+                            {node.title?.length > 17
+                              ? `${node.title.slice(0, 15)}…`
                               : node.title}
                           </text>
                         </g>
@@ -1778,9 +1784,9 @@ export default function ProjectMemoryTab({
             </div>
           ) : activeNode ? (
             /* Node Inspector View */
-            <div className="space-y-4 text-xs">
-              {/* Entity Title & Provenance */}
-              <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-[#1f2a3f] space-y-2">
+            <div className="space-y-3.5 text-xs">
+              {/* 1. Entity Identity, Type & Source Provenance */}
+              <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-[#1f2a3f] space-y-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span
                     className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded border ${
@@ -1806,63 +1812,13 @@ export default function ProjectMemoryTab({
                     </p>
                   )}
                 </div>
-
-                {/* Primary Contextual Actions */}
-                <div className="pt-2 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleInvestigateEntity(activeNode)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white transition-colors shadow-2xs"
-                  >
-                    <MessageSquare className="w-3 h-3" />
-                    <span>Investigate in Ask Codebase</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setNeighborhoodFocusNodeId(prev => (prev === activeNode.id ? null : activeNode.id))
-                    }
-                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium rounded-lg border transition-colors ${
-                      neighborhoodFocusNodeId === activeNode.id
-                        ? 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300'
-                        : 'border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200'
-                    }`}
-                    title="Isolate this entity and its 1-hop connected neighbors"
-                  >
-                    <Crosshair className="w-3 h-3 text-cyan-500" />
-                    <span>{neighborhoodFocusNodeId === activeNode.id ? 'Exit 1-Hop Focus' : 'Focus 1-Hop'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCenterOnNode(activeNode.id)}
-                    className="inline-flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium rounded-lg border border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200"
-                    title="Center graph view on this node"
-                  >
-                    <Eye className="w-3 h-3 text-slate-400" />
-                    <span>Center</span>
-                  </button>
-
-                  {((activeNode.label || activeNode.type) === 'Component' ||
-                    (activeNode.label || activeNode.type) === 'File') && (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenRecordForEntity('bug_fix', activeNode)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium rounded-lg border border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200"
-                    >
-                      <PlusCircle className="w-3 h-3 text-amber-500" />
-                      <span>Record Memory</span>
-                    </button>
-                  )}
-                </div>
               </div>
 
-              {/* Entity Attributes Table (Only real fields supported by retrieved graph data) */}
+              {/* 2. Key Attributes Table */}
               {activeNode.details && Object.keys(activeNode.details).length > 0 && (
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">
-                    Verified Entity Attributes
+                    Key Attributes & Metadata
                   </span>
                   <div className="rounded-lg border border-slate-200 dark:border-[#1f2a3f] divide-y divide-slate-100 dark:divide-[#151c2c] overflow-hidden">
                     {Object.entries(activeNode.details)
@@ -1884,7 +1840,7 @@ export default function ProjectMemoryTab({
                 </div>
               )}
 
-              {/* Repository-Specific Tech Stack & Counts when Repository root is selected */}
+              {/* Repository-Specific Tech Stack when Repository root is selected */}
               {(activeNode.label || activeNode.type) === 'Repository' && (
                 <div className="space-y-2">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">
@@ -1911,7 +1867,7 @@ export default function ProjectMemoryTab({
                 </div>
               )}
 
-              {/* Related Symbols, Bugs & Decisions for Component or File */}
+              {/* Related Symbols */}
               {relatedEntityData.symbols.length > 0 && (
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-purple-600 dark:text-purple-400 block font-semibold">
@@ -1927,7 +1883,7 @@ export default function ProjectMemoryTab({
                           setSelectedEdgeId(null);
                           setSelectedNodeId(sym.id);
                         }}
-                        className="font-mono text-[10px] px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:underline"
+                        className="font-mono text-[10px] px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:underline cursor-pointer"
                       >
                         {sym.name}() L{sym.startLine}-{sym.endLine}
                       </button>
@@ -1936,6 +1892,7 @@ export default function ProjectMemoryTab({
                 </div>
               )}
 
+              {/* Linked Project Memories */}
               {(relatedEntityData.bugs.length > 0 || relatedEntityData.decisions.length > 0) && (
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 block font-semibold">
@@ -1972,50 +1929,163 @@ export default function ProjectMemoryTab({
                 </div>
               )}
 
-              {/* Connected Graph Neighbors (1-hop traversal without reload) */}
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">
-                  Connected Graph Relationships ({incidentEdges.length})
-                </span>
-                {incidentEdges.length > 0 ? (
-                  <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                    {incidentEdges.map((edge) => {
-                      const other = edge.otherNode;
-                      if (!other) return null;
-                      const otherLabel = other.label || other.type;
-                      const style = NODE_STYLES[otherLabel] || NODE_STYLES.File;
-                      return (
-                        <button
-                          key={edge.id}
-                          type="button"
-                          onClick={() => {
-                            setCustomEntity(null);
-                            setSelectedEdgeId(null);
-                            setSelectedNodeId(other.id);
-                          }}
-                          className="w-full text-left px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-[#1f2a3f] hover:border-violet-400 dark:hover:border-violet-700 bg-slate-50/70 dark:bg-[#0b0f17] flex items-center justify-between gap-2 transition-colors"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: style.dot }}
-                            />
-                            <span className="font-mono text-[11px] text-slate-900 dark:text-slate-100 truncate">
-                              {other.title}
-                            </span>
-                          </div>
-                          <span className="text-[9.5px] font-mono text-slate-500 dark:text-slate-400 shrink-0">
-                            {edge.direction === 'outbound' ? `→ ${edge.type}` : `← ${edge.type}`}
-                          </span>
-                        </button>
-                      );
-                    })}
+              {/* 3. Incoming Relationships */}
+              {(() => {
+                const incoming = incidentEdges.filter(e => e.direction === 'inbound');
+                return (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold flex items-center justify-between">
+                      <span>Incoming Relationships ({incoming.length})</span>
+                      <span className="text-[9px] text-slate-400 font-normal">Callers & Inbound Edges</span>
+                    </span>
+                    {incoming.length > 0 ? (
+                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                        {incoming.map((edge) => {
+                          const other = edge.otherNode;
+                          if (!other) return null;
+                          const otherLabel = other.label || other.type;
+                          const style = NODE_STYLES[otherLabel] || NODE_STYLES.File;
+                          return (
+                            <button
+                              key={edge.id}
+                              type="button"
+                              onClick={() => {
+                                setCustomEntity(null);
+                                setSelectedEdgeId(null);
+                                setSelectedNodeId(other.id);
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-[#1f2a3f] hover:border-violet-400 dark:hover:border-violet-700 bg-slate-50/70 dark:bg-[#0b0f17] flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: style.dot }}
+                                />
+                                <span className="font-mono text-[11px] text-slate-900 dark:text-slate-100 truncate">
+                                  {other.title}
+                                </span>
+                              </div>
+                              <span className="text-[9.5px] font-mono text-cyan-600 dark:text-cyan-400 shrink-0 font-semibold">
+                                ← {edge.type}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                        No inbound relationships targeting this node in current subgraph.
+                      </p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
-                    No direct {providerName} edges connected to this entity in the current subgraph.
-                  </p>
-                )}
+                );
+              })()}
+
+              {/* 4. Outgoing Relationships */}
+              {(() => {
+                const outgoing = incidentEdges.filter(e => e.direction === 'outbound');
+                return (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold flex items-center justify-between">
+                      <span>Outgoing Relationships ({outgoing.length})</span>
+                      <span className="text-[9px] text-slate-400 font-normal">Callees & Outbound Edges</span>
+                    </span>
+                    {outgoing.length > 0 ? (
+                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                        {outgoing.map((edge) => {
+                          const other = edge.otherNode;
+                          if (!other) return null;
+                          const otherLabel = other.label || other.type;
+                          const style = NODE_STYLES[otherLabel] || NODE_STYLES.File;
+                          return (
+                            <button
+                              key={edge.id}
+                              type="button"
+                              onClick={() => {
+                                setCustomEntity(null);
+                                setSelectedEdgeId(null);
+                                setSelectedNodeId(other.id);
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-[#1f2a3f] hover:border-violet-400 dark:hover:border-violet-700 bg-slate-50/70 dark:bg-[#0b0f17] flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: style.dot }}
+                                />
+                                <span className="font-mono text-[11px] text-slate-900 dark:text-slate-100 truncate">
+                                  {other.title}
+                                </span>
+                              </div>
+                              <span className="text-[9.5px] font-mono text-violet-600 dark:text-violet-400 shrink-0 font-semibold">
+                                → {edge.type}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                        No outbound relationships originating from this node in current subgraph.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* 5. Available Actions Bar */}
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-[#1f2a3f] space-y-2">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">
+                  Available Actions
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleInvestigateEntity(activeNode)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <MessageSquare className="w-3 h-3" />
+                    <span>Investigate in Ask Codebase</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNeighborhoodFocusNodeId(prev => (prev === activeNode.id ? null : activeNode.id))
+                    }
+                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium rounded-lg border transition-colors cursor-pointer ${
+                      neighborhoodFocusNodeId === activeNode.id
+                        ? 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300'
+                        : 'border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200'
+                    }`}
+                    title="Isolate this entity and its 1-hop connected neighbors"
+                  >
+                    <Crosshair className="w-3 h-3 text-cyan-500" />
+                    <span>{neighborhoodFocusNodeId === activeNode.id ? 'Exit 1-Hop Focus' : 'Focus 1-Hop'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCenterOnNode(activeNode)}
+                    className="inline-flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium rounded-lg border border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200 cursor-pointer"
+                    title="Center graph view on this node"
+                  >
+                    <Eye className="w-3 h-3 text-slate-400" />
+                    <span>Center</span>
+                  </button>
+
+                  {((activeNode.label || activeNode.type) === 'Component' ||
+                    (activeNode.label || activeNode.type) === 'File') && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenRecordForEntity('bug_fix', activeNode)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium rounded-lg border border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200 cursor-pointer"
+                    >
+                      <PlusCircle className="w-3 h-3 text-amber-500" />
+                      <span>Record Memory</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ) : (

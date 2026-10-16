@@ -1298,4 +1298,309 @@ describe('Gemini API-Key Failover & Combined Key+Model Failover Suite', () => {
   });
 });
 
+describe('Client Component Integrity & Investigation Render Safeguards', () => {
+  it('1. Verifies all JSX component and icon tags across client files are imported or declared', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+
+    function getJsxFiles(dir) {
+      const files = [];
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          files.push(...getJsxFiles(full));
+        } else if (entry.name.endsWith('.jsx')) {
+          files.push(full);
+        }
+      }
+      return files;
+    }
+
+    const jsxFiles = getJsxFiles('./client/src');
+    assert.ok(jsxFiles.length > 5, 'Must find client JSX files');
+
+    for (const file of jsxFiles) {
+      const content = fs.readFileSync(file, 'utf8');
+
+      // Extract all imported identifiers
+      const imported = new Set();
+      const importLines = content.match(/import\s+[\s\S]*?from\s+['"][^'"]+['"]/g) || [];
+      for (const imp of importLines) {
+        const spec = imp.replace(/^import\s+/, '').replace(/\s+from\s+['"][^'"]+['"]$/, '').trim();
+        if (spec.startsWith('{')) {
+          const items = spec.slice(1, -1).split(',');
+          for (const item of items) {
+            const parts = item.trim().split(/\s+as\s+/);
+            const name = parts[parts.length - 1].trim();
+            if (name) imported.add(name);
+          }
+        } else if (spec.includes('{')) {
+          const defaultPart = spec.split('{')[0].replace(',', '').trim();
+          if (defaultPart) imported.add(defaultPart);
+          const namedPart = spec.slice(spec.indexOf('{') + 1, spec.lastIndexOf('}'));
+          for (const item of namedPart.split(',')) {
+            const parts = item.trim().split(/\s+as\s+/);
+            const name = parts[parts.length - 1].trim();
+            if (name) imported.add(name);
+          }
+        } else {
+          const parts = spec.split(/\s+as\s+/);
+          const name = parts[parts.length - 1].trim();
+          if (name) imported.add(name);
+        }
+      }
+
+      const declared = new Set(imported);
+      const declRegex = /(?:function|class|const|let|var)\s+([a-zA-Z0-9_]+)/g;
+      let dMatch;
+      while ((dMatch = declRegex.exec(content)) !== null) {
+        declared.add(dMatch[1]);
+      }
+
+      // Check all JSX element tags
+      const tagRegex = /<([A-Z][a-zA-Z0-9_]*)/g;
+      let tMatch;
+      const missing = [];
+      while ((tMatch = tagRegex.exec(content)) !== null) {
+        const tag = tMatch[1];
+        if (!declared.has(tag)) {
+          missing.push(tag);
+        }
+      }
+
+      assert.deepEqual(
+        missing,
+        [],
+        `File ${file} has undeclared JSX components which would crash rendering: ${missing.join(', ')}`
+      );
+    }
+  });
+
+  it('2. Verifies Split icon is imported in IncidentInvestigationTab.jsx to prevent Step 2 crash', async () => {
+    const fs = await import('fs');
+    const content = fs.readFileSync('./client/src/components/Tabs/IncidentInvestigationTab.jsx', 'utf8');
+    assert.ok(
+      content.includes('Split') && /import\s*\{[^}]*Split[^}]*\}\s*from\s*['"]lucide-react['"]/.test(content),
+      'Split must be explicitly imported from lucide-react in IncidentInvestigationTab.jsx'
+    );
+  });
+
+  it('3. Verifies ErrorBoundary is mounted in main.jsx and App.jsx to protect application views', async () => {
+    const fs = await import('fs');
+    const mainContent = fs.readFileSync('./client/src/main.jsx', 'utf8');
+    assert.ok(
+      mainContent.includes('<ErrorBoundary>') && mainContent.includes('</ErrorBoundary>'),
+      'Root application in main.jsx must be wrapped with ErrorBoundary'
+    );
+
+    const appContent = fs.readFileSync('./client/src/App.jsx', 'utf8');
+    assert.ok(
+      appContent.includes('<ErrorBoundary') && appContent.includes('</ErrorBoundary>'),
+      'Tab views in App.jsx must be protected with ErrorBoundary'
+    );
+  });
+});
+
+describe('Causal Synthesis Evidence Presentation Adapter & Sanitization Suite', () => {
+  it('1. Translates internal relationship constants to readable human labels', async () => {
+    const { formatRelationshipType } = await import('../client/src/utils/evidenceAdapter.js');
+
+    assert.equal(formatRelationshipType('SYMBOL_CALLS_SYMBOL'), 'calls');
+    assert.equal(formatRelationshipType('ENTRYPOINT_SYMBOL'), 'API entrypoint');
+    assert.equal(formatRelationshipType('COMMIT_CHANGED_FILE'), 'modified in commit');
+    assert.equal(formatRelationshipType('COMMIT_TOUCHES_FILE'), 'modified in commit');
+    assert.equal(formatRelationshipType('FIX_RESOLVES_BUG'), 'historical resolution');
+    assert.equal(formatRelationshipType('INTRODUCES_REGRESSION'), 'introduces regression');
+    assert.equal(formatRelationshipType('LEXICAL_KEYWORD_TRAP'), 'keyword match (unreachable)');
+    assert.equal(formatRelationshipType('RESOLVED_BY'), 'resolved by');
+
+    // Safe fallbacks for undefined/null/unknown
+    assert.equal(formatRelationshipType(null), 'related to');
+    assert.equal(formatRelationshipType(undefined), 'related to');
+    assert.equal(formatRelationshipType('CUSTOM_UNKNOWN_EDGE'), 'custom unknown edge');
+  });
+
+  it('2. Removes raw Markdown headings, square-bracketed enum types, and parser implementation details', async () => {
+    const { cleanDisplayText, cleanProvenance } = await import('../client/src/utils/evidenceAdapter.js');
+
+    const rawMarkdown = '### Directly Observed Graph Facts\n- [ENTRYPOINT_SYMBOL] server/routes/pay.js calls verifyToken (Static AST Parser)';
+    const cleaned = cleanDisplayText(rawMarkdown);
+
+    assert.equal(cleaned.includes('###'), false, 'Must not contain markdown ###');
+    assert.equal(cleaned.includes('[ENTRYPOINT_SYMBOL]'), false, 'Must not contain [ENTRYPOINT_SYMBOL]');
+    assert.equal(cleaned.includes('(Static AST Parser)'), false, 'Must not contain (Static AST Parser)');
+
+    assert.equal(cleanProvenance('Static AST Parser'), 'AST Call Graph');
+    assert.equal(cleanProvenance('Call Graph Traversal (1-hop)'), 'AST Call Graph');
+    assert.equal(cleanProvenance('Call Graph Traversal (2-hop)'), 'AST Call Graph');
+    assert.equal(cleanProvenance('Git Commit Provenance (Suspected Regression)'), 'Git Provenance');
+    assert.equal(cleanProvenance('FalkorDB Bug Resolution Memory'), 'Graph Memory');
+  });
+
+  it('3. Adapts full investigation payload into 6 semantic sections without raw markdown or enums', async () => {
+    const { adaptCausalSynthesis } = await import('../client/src/utils/evidenceAdapter.js');
+
+    const sampleInvestigation = {
+      entryPoint: 'server/routes/pay.js',
+      connectedEvidence: {
+        evidenceChain: [
+          {
+            step: 1,
+            type: 'ENTRYPOINT_SYMBOL',
+            label: 'Route Handler `handlePaymentRequest`',
+            filePath: 'server/routes/pay.js',
+            symbolName: 'handlePaymentRequest',
+            lineRange: 'L12-L45',
+            provenance: 'Static AST Parser',
+            details: 'Entrypoint `server/routes/pay.js` exposes symbol `handlePaymentRequest`.'
+          },
+          {
+            step: 2,
+            type: 'SYMBOL_CALLS_SYMBOL',
+            label: 'Calls `verifyToken` in `services/tokenBucket.js`',
+            filePath: 'services/tokenBucket.js',
+            symbolName: 'verifyToken',
+            lineRange: 'L34-L62',
+            provenance: 'Call Graph Traversal (1-hop)',
+            details: '`handlePaymentRequest` calls `verifyToken`.'
+          },
+          {
+            step: 3,
+            type: 'COMMIT_CHANGED_FILE',
+            commitRole: 'suspected_introducing_change',
+            commitRoleLabel: 'Suspected Introducing Change',
+            label: 'Suspected Change `8f2a1b9`: "Refactor mutex"',
+            commitSha: '8f2a1b9c3d4e5f',
+            commitShortSha: '8f2a1b9',
+            provenance: 'Git Commit Provenance',
+            details: 'Suspected commit touched services/tokenBucket.js.'
+          },
+          {
+            step: 4,
+            type: 'FIX_RESOLVES_BUG',
+            commitRole: 'historical_fix',
+            commitRoleLabel: 'Historical Fix Commit',
+            label: 'Historical Precedent: "Lock Starvation" resolved by "Enforce timeout"',
+            commitSha: '7e1d4c2a1b',
+            commitShortSha: '7e1d4c2',
+            provenance: 'FalkorDB Project Memory',
+            details: 'Historical recurrence occurred previously in services/tokenBucket.js.'
+          }
+        ],
+        matchingCommit: {
+          sha: '8f2a1b9c3d4e5f',
+          shortSha: '8f2a1b9',
+          message: 'Refactor mutex'
+        },
+        priorFixMatch: {
+          title: 'Lock Starvation',
+          fixSummary: 'Enforce timeout',
+          commitSha: '7e1d4c2a1b'
+        }
+      },
+      diagnosis: {
+        rootCauseFile: 'services/tokenBucket.js',
+        rootCauseSymbol: 'acquireTokenLock',
+        confidence: 'HIGH',
+        candidateRankings: [
+          {
+            filePath: 'services/tokenBucket.js',
+            symbolName: 'acquireTokenLock',
+            reasons: ['Downstream dependency of entrypoint', 'Modified in suspected regression commit']
+          }
+        ],
+        implementationStatus: {
+          verified: false,
+          status: 'Historical fix recorded; current implementation not yet verified.',
+          details: 'Active source code contains synchronous blocking wait.'
+        }
+      }
+    };
+
+    const adapted = adaptCausalSynthesis(sampleInvestigation);
+    assert.equal(adapted.isValid, true);
+
+    // 1. Observed Execution Path
+    assert.ok(adapted.observedExecutionPath.length >= 2);
+    assert.equal(adapted.observedExecutionPath[0].relationshipLabel, 'API entrypoint');
+    assert.equal(adapted.observedExecutionPath[1].relationshipLabel, 'calls');
+    assert.equal(adapted.observedExecutionPath[0].provenance, 'AST Call Graph');
+
+    // 2. Suspected Failure Point
+    assert.equal(adapted.suspectedFailurePoint.symbolName, 'acquireTokenLock');
+    assert.equal(adapted.suspectedFailurePoint.filePath, 'services/tokenBucket.js');
+    assert.equal(adapted.suspectedFailurePoint.confidence, 'HIGH');
+    assert.equal(adapted.suspectedFailurePoint.isSufficient, true);
+
+    // 3. Supporting Graph Relationships
+    assert.equal(adapted.supportingGraphRelationships.length, 4);
+    for (const rel of adapted.supportingGraphRelationships) {
+      assert.equal(rel.label.includes('###'), false);
+      assert.equal(rel.label.includes('[SYMBOL_CALLS_SYMBOL]'), false);
+      assert.equal(rel.label.includes('[ENTRYPOINT_SYMBOL]'), false);
+    }
+
+    // 4. Suspected Introducing Commit
+    assert.equal(adapted.suspectedIntroducingCommit.shortSha, '8f2a1b9');
+    assert.equal(adapted.suspectedIntroducingCommit.message, 'Refactor mutex');
+
+    // 5. Historical Precedent
+    assert.equal(adapted.historicalPrecedent.commitShortSha, '7e1d4c2');
+    assert.equal(adapted.historicalPrecedent.fixSummary, 'Enforce timeout');
+
+    // 6. Limitations & Verification Status
+    assert.ok(adapted.limitationsAndVerification.status.includes('Historical fix recorded'));
+    assert.ok(adapted.limitationsAndVerification.boundary.includes('Static graph analysis'));
+  });
+
+  it('4. Handles malformed or empty investigation inputs gracefully without throwing', async () => {
+    const { adaptCausalSynthesis } = await import('../client/src/utils/evidenceAdapter.js');
+
+    const emptyAdapted = adaptCausalSynthesis(null);
+    assert.equal(emptyAdapted.isValid, false);
+    assert.equal(emptyAdapted.suspectedFailurePoint.confidence, 'INSUFFICIENT_EVIDENCE');
+
+    const partialAdapted = adaptCausalSynthesis({});
+    assert.equal(partialAdapted.isValid, true);
+    assert.equal(partialAdapted.suspectedFailurePoint.symbolName, 'unknown');
+    assert.equal(partialAdapted.suspectedFailurePoint.isSufficient, false);
+
+    const textOnly = adaptCausalSynthesis({
+      diagnosis: {
+        summary: '### Inferred Causes\n- [SYMBOL_CALLS_SYMBOL] test calls target (Static AST Parser)'
+      }
+    });
+    assert.equal(textOnly.isValid, true);
+    assert.equal(textOnly.suspectedFailurePoint.symbolName, 'unknown');
+  });
+
+  it('5. Ensures client components do not render raw uppercase enums or markdown markers', async () => {
+    const fs = await import('fs');
+
+    const tabCode = fs.readFileSync('./client/src/components/Tabs/IncidentInvestigationTab.jsx', 'utf8');
+    assert.ok(
+      tabCode.includes('CausalSynthesisPanel'),
+      'IncidentInvestigationTab must import and render CausalSynthesisPanel'
+    );
+    assert.equal(
+      tabCode.includes('Rel: {item.type}'),
+      false,
+      'IncidentInvestigationTab must not render raw Rel: {item.type}'
+    );
+
+    const canvasCode = fs.readFileSync('./client/src/components/Graph/CausalGraphCanvas.jsx', 'utf8');
+    assert.equal(
+      canvasCode.includes("'INTRODUCES_REGRESSION'"),
+      false,
+      'CausalGraphCanvas must not contain raw uppercase INTRODUCES_REGRESSION label'
+    );
+    assert.equal(
+      canvasCode.includes("'KEYWORD MATCH (UNREACHABLE)'"),
+      false,
+      'CausalGraphCanvas must not contain raw uppercase KEYWORD MATCH label'
+    );
+  });
+});
+
+
 

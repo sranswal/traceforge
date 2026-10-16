@@ -81,77 +81,68 @@ export default function RepoHeader({
   }, [showAdvancedMenu]);
 
   return (
-    <div className="border-b border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#0c111a] pt-4 transition-colors relative z-30">
+    <div className="border-b border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#0c111a] pt-3 transition-colors relative z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        {/* Repo Title & Meta */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-3">
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="font-mono px-2 py-0.5 rounded bg-violet-50 dark:bg-[#131b2c] text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/40">
-                {projectType}
-              </span>
-              <span className="text-slate-400 dark:text-slate-500">•</span>
-              <span className="text-slate-600 dark:text-slate-400">
-                {architecture.pattern}
-              </span>
-            </div>
+        {/* Repo Title & Meta Row */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2.5">
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-1.5 truncate">
+                <span>{repository.fullName}</span>
+                <a
+                  href={repository.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-0.5"
+                  title="View on GitHub"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </h1>
 
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <span>{repository.fullName}</span>
-              <a
-                href={repository.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors p-1"
-                title="View on GitHub"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            </h1>
-
-            <p 
-              className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-3xl leading-relaxed line-clamp-2"
-              title={repository.description}
-            >
-              {formatCleanDescription(repository.description)}
-            </p>
-          </div>
-
-          {/* Quick Metrics & Badges */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap text-xs text-slate-500 dark:text-slate-400">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-100 dark:bg-[#111726] border border-slate-200 dark:border-[#202d45]">
-              <GitBranch className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span className="font-mono text-slate-800 dark:text-slate-200 font-medium">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-[#131b2c] dark:text-slate-300 border border-slate-200 dark:border-[#202d45]">
                 {repository.branch}
               </span>
-            </div>
 
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-100 dark:bg-[#111726] border border-slate-200 dark:border-[#202d45]">
-              <Star className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-              <span className="font-mono text-slate-800 dark:text-slate-200 font-medium">
-                {repository.stars.toLocaleString()}
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+                {projectType} · {architecture.pattern}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-100 dark:bg-[#111726] border border-slate-200 dark:border-[#202d45]">
-              <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-              <span className="font-mono text-slate-800 dark:text-slate-200 font-medium">
-                {metrics.analysisTimeMs}ms
-              </span>
+            {repository.description && (
+              <p 
+                className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl truncate leading-normal"
+                title={repository.description}
+              >
+                {formatCleanDescription(repository.description)}
+              </p>
+            )}
+          </div>
+
+          {/* Quick Metrics & Provider Status */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap text-xs">
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100/80 dark:bg-[#111726] border border-slate-200 dark:border-[#202d45] text-slate-600 dark:text-slate-400 text-[11px] font-mono">
+              <Star className="w-3 h-3 text-amber-500" />
+              <span>{repository.stars.toLocaleString()}</span>
+            </div>
+
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100/80 dark:bg-[#111726] border border-slate-200 dark:border-[#202d45] text-slate-600 dark:text-slate-400 text-[11px] font-mono">
+              <Clock className="w-3 h-3 text-teal-500" />
+              <span>{metrics.analysisTimeMs}ms</span>
             </div>
 
             <button
               type="button"
               onClick={() => onSelectTab('memory')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded border transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono border transition-colors cursor-pointer ${
                 isMemoryConnected
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-800/40 dark:text-emerald-300'
-                  : 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-800/40 dark:text-amber-300'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300'
+                  : 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300'
               }`}
               title={`Open ${providerName} Project Memory`}
             >
-              <Database className="w-3.5 h-3.5" />
-              <span className="font-mono font-medium">
+              <Database className="w-3 h-3" />
+              <span>
                 {isMemoryConnected
                   ? `${providerName} · ${counts.symbols ?? 0} symbols`
                   : `${providerName} Ready`}
@@ -160,41 +151,37 @@ export default function RepoHeader({
           </div>
         </div>
 
-        {/* Primary Navigation Tabs Strip & Unconstrained Dropdown Container */}
+        {/* Primary Navigation Tabs Strip */}
         <div className="flex items-center justify-between gap-2 border-t border-slate-200 dark:border-[#1a2336]/60">
-          {/* Scrollable Tabs */}
           <nav className="flex items-center gap-1 -mb-px overflow-x-auto py-0 flex-1 min-w-0" aria-label="Tabs">
             {/* 1. Investigation Workspace */}
             <button
               type="button"
               onClick={() => onSelectTab('incident')}
-              className={`flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus:outline-none cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus:outline-none cursor-pointer ${
                 activeTab === 'incident'
-                  ? 'border-violet-600 dark:border-violet-500 text-violet-700 dark:text-white font-semibold'
+                  ? 'border-violet-600 text-violet-700 dark:text-white font-semibold'
                   : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
-              <ShieldAlert className={`w-4 h-4 ${activeTab === 'incident' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'}`} />
+              <ShieldAlert className={`w-3.5 h-3.5 ${activeTab === 'incident' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'}`} />
               <span>Investigation Workspace</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-950/80 dark:text-violet-300 dark:border-violet-800/50">
-                Workflow
-              </span>
             </button>
 
             {/* 2. Graph Memory & Provenance */}
             <button
               type="button"
               onClick={() => onSelectTab('memory')}
-              className={`flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus:outline-none cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus:outline-none cursor-pointer ${
                 activeTab === 'memory'
-                  ? 'border-teal-600 dark:border-teal-500 text-teal-700 dark:text-white font-semibold'
+                  ? 'border-teal-600 text-teal-700 dark:text-white font-semibold'
                   : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
-              <Database className={`w-4 h-4 ${activeTab === 'memory' ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
+              <Database className={`w-3.5 h-3.5 ${activeTab === 'memory' ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'}`} />
               <span>Graph Memory</span>
               {memoryItemCount !== undefined && (
-                <span className="text-[11px] font-mono px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-[#182236] text-teal-700 dark:text-teal-300 border border-slate-200 dark:border-[#2b3a58]">
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-[#182236] text-teal-700 dark:text-teal-300 border border-slate-200 dark:border-[#2b3a58]">
                   {memoryItemCount}
                 </span>
               )}
@@ -204,13 +191,13 @@ export default function RepoHeader({
             <button
               type="button"
               onClick={() => onSelectTab('ask')}
-              className={`flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus:outline-none cursor-pointer ${
+              className={`flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus:outline-none cursor-pointer ${
                 activeTab === 'ask'
-                  ? 'border-violet-600 dark:border-violet-500 text-violet-700 dark:text-white font-semibold'
+                  ? 'border-violet-600 text-violet-700 dark:text-white font-semibold'
                   : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
-              <MessageSquare className={`w-4 h-4 ${activeTab === 'ask' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'}`} />
+              <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'ask' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400'}`} />
               <span>Memory Q&A</span>
             </button>
           </nav>

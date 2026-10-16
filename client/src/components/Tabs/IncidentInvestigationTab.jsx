@@ -24,10 +24,13 @@ import {
   ChevronRight,
   ChevronDown,
   Terminal,
-  ShieldAlert
+  ShieldAlert,
+  Split
 } from 'lucide-react';
 import InvestigationStepIndicator from '../InvestigationStepIndicator';
 import CausalGraphCanvas from '../Graph/CausalGraphCanvas';
+import CausalSynthesisPanel from '../Investigation/CausalSynthesisPanel';
+import { formatRelationshipType } from '../../utils/evidenceAdapter';
 
 export default function IncidentInvestigationTab({
   analysisData,
@@ -439,269 +442,360 @@ export default function IncidentInvestigationTab({
         completedSteps={completedSteps}
       />
 
-      {/* STEP 1: Incident Intake & Baseline Contrast */}
+      {/* STEP 1: Incident Intake & Purposeful Forensic Workspace */}
       {currentStep === 'incident' && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-[#101624] border border-slate-200 dark:border-[#1f2a3f] rounded-xl p-5 shadow-lg transition-colors">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800/40">
-                    Step 1 · Intake
-                  </span>
-                  <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40">
-                    {providerName} Active
-                  </span>
-                </div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <ShieldAlert className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                  Incident Scope & Anomaly Intake
-                </h2>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Input observed anomaly symptoms and recent deployment commits to initiate multi-hop causal graph traversal.
-                </p>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column (7 cols): Compact Incident Scope & Anomaly Intake */}
+            <div className="lg:col-span-7 xl:col-span-7 space-y-5">
+              <div className="bg-white dark:bg-[#101624] border border-slate-200 dark:border-[#1f2a3f] rounded-xl p-5 shadow-lg transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-[#1b2537]">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800/40">
+                        Step 1 · Intake
+                      </span>
+                      <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40">
+                        {providerName} Active
+                      </span>
+                    </div>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 mt-1">
+                      <ShieldAlert className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
+                      Incident Scope & Anomaly Intake
+                    </h2>
+                  </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleLoadScenario}
-                  disabled={isSeeding || isInvestigating}
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 dark:text-amber-300 dark:border-amber-800/50 transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
-                  <span>{isSeeding ? 'Seeding in FalkorDB...' : 'Seed Sample Incident'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Target Scope Switcher */}
-            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-[#1b2537] flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Target Scope:</span>
-                <div className="inline-flex rounded-md shadow-sm" role="group">
                   <button
                     type="button"
-                    onClick={() => handleSelectScenarioMode('synthetic')}
-                    className={`px-3 py-1 text-xs font-medium rounded-l-md border transition-colors cursor-pointer ${
-                      scenarioMode === 'synthetic'
-                        ? 'bg-violet-600 text-white border-violet-600'
-                        : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200 dark:bg-[#151c2d] dark:text-slate-300 dark:border-[#25324b] dark:hover:bg-[#1a243a]'
-                    }`}
+                    onClick={handleLoadScenario}
+                    disabled={isSeeding || isInvestigating}
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 dark:text-amber-300 dark:border-amber-800/50 transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
                   >
-                    Sample Incident (acme/payment-gateway)
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+                    <span>{isSeeding ? 'Seeding in FalkorDB...' : 'Seed Sample Incident'}</span>
                   </button>
-                  {activeRepo && activeRepo !== 'acme/payment-gateway' && (
-                    <button
-                      type="button"
-                      onClick={() => handleSelectScenarioMode('active')}
-                      className={`px-3 py-1 text-xs font-medium rounded-r-md border transition-colors cursor-pointer ${
-                        scenarioMode === 'active'
-                          ? 'bg-violet-600 text-white border-violet-600'
-                          : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200 dark:bg-[#151c2d] dark:text-slate-300 dark:border-[#25324b] dark:hover:bg-[#1a243a]'
-                      }`}
-                    >
-                      Active Repository ({activeRepo})
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                Active Graph: <code className="text-slate-800 dark:text-slate-200">{targetRepo}</code>
-              </span>
-            </div>
-
-            {/* Form Fields */}
-            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-[#1b2537] grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Incident Title / Anomaly Summary
-                  </label>
-                  <input
-                    type="text"
-                    value={reportTitle}
-                    onChange={(e) => setReportTitle(e.target.value)}
-                    className="w-full text-xs font-mono px-3 py-2 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
-                  />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Symptoms & Observable Failure Logs
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={symptoms}
-                    onChange={(e) => setSymptoms(e.target.value)}
-                    className="w-full text-xs font-mono px-3 py-2 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      API Entrypoint
-                    </label>
-                    <input
-                      type="text"
-                      value={entryPoint}
-                      onChange={(e) => setEntryPoint(e.target.value)}
-                      className="w-full text-xs font-mono px-3 py-2 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Suspect Refactor Commit
-                    </label>
-                    <input
-                      type="text"
-                      value={suspectedCommit}
-                      onChange={(e) => setSuspectedCommit(e.target.value)}
-                      className="w-full text-xs font-mono px-3 py-2 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Surface Suspect (Decoy Candidate)
-                  </label>
-                  <input
-                    type="text"
-                    value={suspectedComponent}
-                    onChange={(e) => setSuspectedComponent(e.target.value)}
-                    className="w-full text-xs font-mono px-3 py-2 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Action Bar */}
-            <div className="mt-5 flex items-center justify-between">
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Target: <code className="font-mono text-slate-800 dark:text-slate-200">{targetRepo}</code>
-              </span>
-
-              <button
-                type="button"
-                onClick={handleRunInvestigation}
-                disabled={isInvestigating}
-                className="flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-950/30 transition-all disabled:opacity-50 cursor-pointer"
-              >
-                {isInvestigating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Traversing FalkorDB Graph...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 fill-current" />
-                    <span>Investigate Failure Chain</span>
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </>
-                )}
-              </button>
-            </div>
-
-            {investigationError && (
-              <div className="mt-3 p-3 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/40 dark:text-rose-300 text-xs">
-                {investigationError}
-              </div>
-            )}
-          </div>
-
-          {/* Keyword Baseline vs Graph Traversal Comparison */}
-          {investigation && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Naive Keyword Search Baseline */}
-              <div className="bg-white dark:bg-[#121622] border border-rose-200 dark:border-rose-900/50 rounded-xl p-5 flex flex-col justify-between shadow-md transition-colors">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50 flex items-center gap-1.5">
-                      <XCircle className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" /> Naive Keyword Search Baseline
-                    </span>
-                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">0 Call Hops</span>
-                  </div>
-
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    Trapped on Decoy: <code className="text-rose-600 dark:text-rose-400">{investigation.keywordBaseline.topSuspectFile}</code>
-                  </h3>
-
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    {investigation.keywordBaseline.suspectedRootCause}
-                  </p>
-
-                  <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-[#212b3e] text-xs space-y-1.5 transition-colors">
-                    <div className="font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
-                      <HelpCircle className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                      Why Keyword Search Failed:
+                {/* Target Scope Switcher */}
+                <div className="py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs border-b border-slate-200 dark:border-[#1b2537]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">Target:</span>
+                    <div className="inline-flex rounded-md shadow-xs" role="group">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectScenarioMode('synthetic')}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-l-md border transition-colors cursor-pointer ${
+                          scenarioMode === 'synthetic'
+                            ? 'bg-violet-600 text-white border-violet-600'
+                            : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200 dark:bg-[#151c2d] dark:text-slate-300 dark:border-[#25324b] dark:hover:bg-[#1a243a]'
+                        }`}
+                      >
+                        Sample Incident (acme/payment-gateway)
+                      </button>
+                      {activeRepo && activeRepo !== 'acme/payment-gateway' && (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectScenarioMode('active')}
+                          className={`px-2.5 py-1 text-xs font-medium rounded-r-md border transition-colors cursor-pointer ${
+                            scenarioMode === 'active'
+                              ? 'bg-violet-600 text-white border-violet-600'
+                              : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200 dark:bg-[#151c2d] dark:text-slate-300 dark:border-[#25324b] dark:hover:bg-[#1a243a]'
+                          }`}
+                        >
+                          Active ({activeRepo})
+                        </button>
+                      )}
                     </div>
-                    <p className="text-slate-600 dark:text-slate-400">
-                      {investigation.keywordBaseline.limitation}
+                  </div>
+
+                  <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                    Active Graph: <code className="text-slate-800 dark:text-slate-200 font-semibold">{targetRepo}</code>
+                  </span>
+                </div>
+
+                {/* Form Fields: Grouped for Quick Scanning */}
+                <div className="pt-3 space-y-3.5">
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Incident Title / Anomaly Summary
+                      </label>
+                      <input
+                        type="text"
+                        value={reportTitle}
+                        onChange={(e) => setReportTitle(e.target.value)}
+                        className="w-full text-xs font-mono px-3 py-2 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Symptoms & Observable Failure Logs
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={symptoms}
+                        onChange={(e) => setSymptoms(e.target.value)}
+                        className="w-full text-xs font-mono px-3 py-2 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Forensic Anchors: 3-column compact grid */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-[#1b2537] grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        API Entrypoint
+                      </label>
+                      <input
+                        type="text"
+                        value={entryPoint}
+                        onChange={(e) => setEntryPoint(e.target.value)}
+                        className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Suspect Refactor Commit
+                      </label>
+                      <input
+                        type="text"
+                        value={suspectedCommit}
+                        onChange={(e) => setSuspectedCommit(e.target.value)}
+                        className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Surface Suspect (Decoy)
+                      </label>
+                      <input
+                        type="text"
+                        value={suspectedComponent}
+                        onChange={(e) => setSuspectedComponent(e.target.value)}
+                        className="w-full text-xs font-mono px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-300 dark:border-[#232f44] text-slate-900 dark:text-slate-100 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Bar */}
+                <div className="mt-4 pt-3 border-t border-slate-200 dark:border-[#1b2537] flex items-center justify-between">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Scope: <code className="font-mono text-slate-800 dark:text-slate-200">{targetRepo}</code>
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={handleRunInvestigation}
+                    disabled={isInvestigating}
+                    className="flex items-center gap-2 px-5 py-2.5 text-xs sm:text-sm font-semibold rounded-lg bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-950/30 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {isInvestigating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Traversing FalkorDB Graph...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>Investigate Failure Chain</span>
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {investigationError && (
+                  <div className="mt-3 p-3 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/40 dark:text-rose-300 text-xs">
+                    {investigationError}
+                  </div>
+                )}
+              </div>
+
+              {/* Keyword Baseline vs Graph Traversal Comparison (Below Intake) */}
+              {investigation && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Naive Keyword Search Baseline */}
+                  <div className="bg-white dark:bg-[#121622] border border-rose-200 dark:border-rose-900/50 rounded-xl p-4 flex flex-col justify-between shadow-md transition-colors text-xs space-y-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-semibold px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50 flex items-center gap-1.5 text-[10px]">
+                          <XCircle className="w-3 h-3 text-rose-500 dark:text-rose-400" /> Naive Keyword Search Baseline
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">0 Call Hops</span>
+                      </div>
+
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                        Trapped on Decoy: <code className="text-rose-600 dark:text-rose-400">{investigation.keywordBaseline.topSuspectFile}</code>
+                      </h3>
+
+                      <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
+                        {investigation.keywordBaseline.suspectedRootCause}
+                      </p>
+
+                      <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-[#212b3e] text-[11px] space-y-1 transition-colors">
+                        <div className="font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1">
+                          <HelpCircle className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                          <span>Why Keyword Search Failed:</span>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-400">
+                          {investigation.keywordBaseline.limitation}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200 dark:border-[#1a2336] text-[11px] text-rose-600 dark:text-rose-400/80">
+                      Result: Developers waste hours modifying rateLimiter.js without fixing the lock starvation.
+                    </div>
+                  </div>
+
+                  {/* Graph-Native Traversal */}
+                  <div className="bg-white dark:bg-[#121622] border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-4 flex flex-col justify-between shadow-md transition-colors text-xs space-y-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50 flex items-center gap-1.5 text-[10px]">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> Graph-Native Multi-Hop Traversal
+                        </span>
+                        <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                          {callHopsCount} Call Hops
+                        </span>
+                      </div>
+
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                        True Root Cause: <code className="text-emerald-600 dark:text-emerald-400">{investigation.diagnosis.rootCauseFile}</code>
+                        <span className="ml-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">({investigation.diagnosis.rootCauseSymbol})</span>
+                      </h3>
+
+                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11px]">
+                        Traced multi-hop call chain from entrypoint <code className="font-mono text-violet-600 dark:text-violet-300">{investigation.entryPoint}</code> to <code className="font-mono text-rose-600 dark:text-rose-300">{investigation.diagnosis.rootCauseSymbol}</code>. Correlated refactor commit <code className="font-mono text-amber-600 dark:text-amber-300">{investigation.suspectedCommit?.slice(0, 7)}</code> and verified prior fix in FalkorDB!
+                      </p>
+
+                      <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-emerald-200 dark:border-emerald-900/30 text-[11px] space-y-1 transition-colors">
+                        <div className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                          <Zap className="w-3 h-3" />
+                          <span>Graph Discovery:</span>
+                        </div>
+                        <ul className="text-slate-700 dark:text-slate-300 list-disc list-inside space-y-0.5">
+                          {topCandidate?.reasons?.map((reason, idx) => (
+                            <li key={idx}>{reason}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-200 dark:border-[#1a2336] flex items-center justify-between text-xs">
+                      <span className="font-medium text-emerald-600 dark:text-emerald-400 text-[11px]">
+                        Confidence: {investigation.diagnosis.confidence}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep('diagnosis')}
+                        className="text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-semibold flex items-center gap-1 cursor-pointer text-xs"
+                      >
+                        <span>View Causal Graph & Diagnosis</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column (5 cols): Purposeful Contextual Region - Forensic Hypotheses & Live Graph Context */}
+            <div className="lg:col-span-5 xl:col-span-5 space-y-4">
+              {/* Context Card 1: Competing Hypotheses & Topology Context */}
+              <div className="rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#101624] p-4 shadow-md space-y-3 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                      Pre-Flight Forensic Hypotheses & Topology
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 dark:bg-[#162035] dark:text-slate-400 dark:border-[#24334e]">
+                    AST vs Lexical
+                  </span>
+                </div>
+
+                <div className="space-y-2.5 text-xs">
+                  {/* Decoy Surface Clue */}
+                  <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-slate-800 space-y-1.5 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        Hypothesis A · Lexical Decoy
+                      </span>
+                      <span className="text-[10px] font-mono text-rose-600 dark:text-rose-400 font-semibold">
+                        0 Call Hops
+                      </span>
+                    </div>
+                    <div className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                      services/rateLimiter.js
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                      Surface symptom match (&quot;rate limit&quot;, &quot;504 timeout&quot;) tricks lexical search into blaming recent cache refactor commit <code className="text-amber-600 dark:text-amber-300 font-mono">8f2a1b9</code>.
+                    </p>
+                  </div>
+
+                  {/* Multi-Hop Causal Chain */}
+                  <div className="p-3 rounded-lg bg-violet-50/50 dark:bg-[#0f1728] border border-violet-200 dark:border-violet-900/50 space-y-1.5 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-950/70 dark:text-violet-300">
+                        Hypothesis B · Causal Call Chain
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                        2 Call Hops
+                      </span>
+                    </div>
+                    <div className="font-mono text-xs font-bold text-violet-700 dark:text-violet-300">
+                      routes/pay.js ➔ auth.js ➔ tokenBucket.js
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug">
+                      AST traversal traces synchronous downstream calls from <code className="text-slate-800 dark:text-slate-200 font-mono">/api/pay</code> through <code className="text-violet-600 dark:text-violet-300 font-mono">verifyToken</code> into mutex acquisition in <code className="text-rose-600 dark:text-rose-300 font-mono">acquireTokenLock</code>.
                     </p>
                   </div>
                 </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-200 dark:border-[#1a2336] text-xs text-rose-600 dark:text-rose-400/80">
-                  Result: Developers waste hours modifying rateLimiter.js without fixing the lock starvation.
-                </div>
               </div>
 
-              {/* Graph-Native Traversal */}
-              <div className="bg-white dark:bg-[#121622] border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-5 flex flex-col justify-between shadow-md transition-colors">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Graph-Native Multi-Hop Traversal
-                    </span>
-                    <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
-                      {callHopsCount} Call Hops
-                    </span>
+              {/* Context Card 2: FalkorDB Institutional Memory & Graph Readiness */}
+              <div className="rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#101624] p-4 shadow-md space-y-3 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                      FalkorDB Memory Readiness
+                    </h3>
                   </div>
-
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    True Root Cause: <code className="text-emerald-600 dark:text-emerald-400">{investigation.diagnosis.rootCauseFile}</code>
-                    <span className="ml-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono">({investigation.diagnosis.rootCauseSymbol})</span>
-                  </h3>
-
-                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                    Traced multi-hop call chain from entrypoint <code className="font-mono text-violet-600 dark:text-violet-300">{investigation.entryPoint}</code> to <code className="font-mono text-rose-600 dark:text-rose-300">{investigation.diagnosis.rootCauseSymbol}</code>. Correlated refactor commit <code className="font-mono text-amber-600 dark:text-amber-300">{investigation.suspectedCommit?.slice(0, 7)}</code> and verified prior fix record in FalkorDB!
-                  </p>
-
-                  <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-emerald-200 dark:border-emerald-900/30 text-xs space-y-1.5 transition-colors">
-                    <div className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5" />
-                      Graph Discovery:
-                    </div>
-                    <ul className="text-slate-700 dark:text-slate-300 list-disc list-inside space-y-0.5">
-                      {topCandidate?.reasons?.map((reason, idx) => (
-                        <li key={idx}>{reason}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/40 font-semibold">
+                    Live Indexed
+                  </span>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-200 dark:border-[#1a2336] flex items-center justify-between text-xs">
-                  <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                    Confidence: {investigation.diagnosis.confidence}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep('diagnosis')}
-                    className="text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>View Causal Graph & Diagnosis</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-[#1e293d] space-y-1 transition-colors">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Historical Precedent Bug:</span>
+                      <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-300">Worker Thread Lock Starvation</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Recorded Fix Precedent:</span>
+                      <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">Commit 7e1d4c2 (dev-alice)</span>
+                    </div>
+                    <p className="text-[10.5px] text-slate-500 dark:text-slate-400 italic pt-1 border-t border-slate-200 dark:border-[#1a2336]">
+                      Remediation pattern: Non-blocking tryAcquire with circuit breaker timeout.
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-teal-50/50 dark:bg-[#0a1622] border border-teal-200 dark:border-teal-900/40 text-[11px] text-slate-700 dark:text-slate-300 leading-snug">
+                    <strong className="text-teal-800 dark:text-teal-300 block mb-0.5">Traversal Strategy:</strong>
+                    Investigating traverses the live AST graph starting from the entrypoint, intersects candidate symbols with recent Git commit diffs, and evaluates FalkorDB historical memory for instant precedent recall.
+                  </div>
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -950,7 +1044,7 @@ export default function IncidentInvestigationTab({
                                     {item.commitRoleLabel || (item.commitRole === 'historical_fix' ? 'Historical Fix' : 'Suspected Change')}: {item.commitSha.slice(0, 7)}
                                   </span>
                                 )}
-                                <span className="text-violet-600 dark:text-violet-400">Rel: {item.type}</span>
+                                <span className="text-violet-600 dark:text-violet-400 font-medium">Relationship: {formatRelationshipType(item.type)}</span>
                               </div>
                             </div>
                           </div>
@@ -1097,10 +1191,9 @@ export default function IncidentInvestigationTab({
                       </div>
                     ) : null}
 
-                    {/* Structured Diagnosis */}
-                    <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-[#0b0f17] p-3 rounded-lg border border-slate-200 dark:border-[#212b3e] max-h-40 overflow-y-auto transition-colors">
-                      <strong className="text-slate-900 dark:text-slate-100 block mb-1">Causal Synthesis:</strong>
-                      {investigation.diagnosis.summary}
+                    {/* Semantic Causal Synthesis Panel */}
+                    <div className="space-y-2 pt-1">
+                      <CausalSynthesisPanel investigation={investigation} />
                     </div>
 
                     {/* Next Action: Advance to Recovery Simulation */}

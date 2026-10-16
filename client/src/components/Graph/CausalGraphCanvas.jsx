@@ -39,7 +39,7 @@ export default function CausalGraphCanvas({
   const activeEdgeId = selectedEdgeId !== undefined ? selectedEdgeId : internalSelectedEdgeId;
 
   // Canvas coordinate space
-  const canvasWidth = 780;
+  const canvasWidth = 820;
   const canvasHeight = 440;
 
   // Check if read-only ablation experiment is active
@@ -78,9 +78,9 @@ export default function CausalGraphCanvas({
         evidenceCategory: 'source_evidence',
         role: 'API Entrypoint',
         category: 'Source Evidence',
-        x: 100,
+        x: 95,
         y: 220,
-        radius: 28,
+        radius: 26,
         color: '#8b5cf6', // Violet
         bgColor: '#1e1438',
         borderColor: '#a78bfa',
@@ -98,9 +98,9 @@ export default function CausalGraphCanvas({
         evidenceCategory: 'inferred_relationship',
         role: 'Auth & Token Validation',
         category: 'Inferred Relationship',
-        x: 290,
+        x: 285,
         y: 220,
-        radius: 26,
+        radius: 25,
         color: '#06b6d4', // Cyan
         bgColor: '#082531',
         borderColor: '#22d3ee',
@@ -118,9 +118,9 @@ export default function CausalGraphCanvas({
         evidenceCategory: isAblated ? 'uncertain_information' : 'suspected_change',
         role: isAblated ? 'Disconnected Symbol (Ablated)' : 'True Root Cause (Lock Starvation)',
         category: isAblated ? 'Severed Target' : 'Suspected Root Cause',
-        x: 500,
+        x: 495,
         y: 220,
-        radius: 34,
+        radius: 30,
         color: isAblated ? '#94a3b8' : '#f43f5e', // Rose/Crimson or Muted Slate
         bgColor: isAblated ? '#161c28' : '#310a14',
         borderColor: isAblated ? '#64748b' : '#fb7185',
@@ -140,9 +140,9 @@ export default function CausalGraphCanvas({
         evidenceCategory: 'suspected_change',
         role: 'Suspected Introducing Change',
         category: 'Suspected Change',
-        x: 500,
-        y: 80,
-        radius: 24,
+        x: 495,
+        y: 75,
+        radius: 22,
         color: '#f59e0b', // Amber
         bgColor: '#2a1a06',
         borderColor: '#fbbf24',
@@ -160,9 +160,9 @@ export default function CausalGraphCanvas({
         evidenceCategory: 'uncertain_information',
         role: 'Rejected Decoy (Keyword Match Trap)',
         category: 'Uncertain / Decoy',
-        x: 290,
-        y: 360,
-        radius: 24,
+        x: 285,
+        y: 365,
+        radius: 22,
         color: '#94a3b8', // Gray
         bgColor: '#141a24',
         borderColor: '#475569',
@@ -180,7 +180,7 @@ export default function CausalGraphCanvas({
         evidenceCategory: 'historical_fix',
         role: 'Historical Fix Precedent',
         category: 'Historical Precedent',
-        x: 690,
+        x: 700,
         y: 220,
         radius: 26,
         color: '#10b981', // Emerald
@@ -199,7 +199,7 @@ export default function CausalGraphCanvas({
         id: 'edge-1',
         source: 'node-entrypoint',
         target: 'node-hop',
-        label: 'CALLS (sync)',
+        label: 'calls (sync)',
         relationshipType: 'SYMBOL_CALLS_SYMBOL',
         isCausal: true,
         color: '#a78bfa',
@@ -212,7 +212,7 @@ export default function CausalGraphCanvas({
         id: 'edge-2',
         source: 'node-hop',
         target: 'node-root-cause',
-        label: isAblated ? '[ABLATED] CALLS (severed)' : 'CALLS (blocking)',
+        label: isAblated ? 'severed call' : 'calls (blocking)',
         relationshipType: 'SYMBOL_CALLS_SYMBOL',
         isCausal: !isAblated,
         isAblated,
@@ -228,7 +228,7 @@ export default function CausalGraphCanvas({
         id: 'edge-3',
         source: 'node-commit',
         target: 'node-root-cause',
-        label: 'INTRODUCES_REGRESSION',
+        label: 'introduces regression',
         relationshipType: 'COMMIT_TOUCHES_FILE',
         isCausal: false,
         color: '#fbbf24',
@@ -241,7 +241,7 @@ export default function CausalGraphCanvas({
         id: 'edge-4',
         source: 'node-entrypoint',
         target: 'node-decoy',
-        label: 'KEYWORD MATCH (UNREACHABLE)',
+        label: 'keyword match (unreachable)',
         relationshipType: 'LEXICAL_KEYWORD_TRAP',
         isCausal: false,
         color: '#64748b',
@@ -254,7 +254,7 @@ export default function CausalGraphCanvas({
         id: 'edge-5',
         source: 'node-root-cause',
         target: 'node-memory',
-        label: `RESOLVED_BY (${fixCommitSha.slice(0, 7)})`,
+        label: `resolved in ${fixCommitSha.slice(0, 7)}`,
         relationshipType: 'FIX_RESOLVES_BUG',
         isCausal: false,
         color: '#34d399',
@@ -278,7 +278,7 @@ export default function CausalGraphCanvas({
     if (activeEdgeId) {
       const activeEdge = edgeMap.get(activeEdgeId);
       if (activeEdge) {
-        return activeEdge.source === nodeId || activeEdge.target === nodeId ? 1 : 0.35;
+        return activeEdge.source === nodeId || activeEdge.target === nodeId ? 1 : 0.18;
       }
     }
     if (selectedNodeId) {
@@ -288,22 +288,22 @@ export default function CausalGraphCanvas({
         (e.source === selectedNodeId && e.target === nodeId) ||
         (e.target === selectedNodeId && e.source === nodeId)
       );
-      return isNeighbor ? 0.9 : 0.35;
+      return isNeighbor ? 0.95 : 0.18;
     }
     // Default view: highlight causal path, dim decoy
-    if (nodeId === 'node-decoy') return 0.55;
+    if (nodeId === 'node-decoy') return 0.45;
     return 1;
   };
 
   // Determine dimming opacity for edges
   const getEdgeOpacity = (edge) => {
     if (activeEdgeId) {
-      return edge.id === activeEdgeId ? 1 : 0.25;
+      return edge.id === activeEdgeId ? 1 : 0.12;
     }
     if (selectedNodeId) {
-      return edge.source === selectedNodeId || edge.target === selectedNodeId ? 1 : 0.25;
+      return edge.source === selectedNodeId || edge.target === selectedNodeId ? 1 : 0.12;
     }
-    if (edge.id === 'edge-4') return 0.45; // Decoy edge is dimmed by default
+    if (edge.id === 'edge-4') return 0.35; // Decoy edge is dimmed by default
     return 0.85;
   };
 
@@ -527,7 +527,11 @@ export default function CausalGraphCanvas({
 
               // Calculate midpoint for edge label
               const midX = (src.x + tgt.x) / 2;
-              const midY = (src.y + tgt.y) / 2 - (edge.source === 'node-commit' ? 10 : 8);
+              const midY = (src.y + tgt.y) / 2 - (edge.source === 'node-commit' ? 0 : 9);
+
+              const labelLen = edge.label.length;
+              const badgeWidth = Math.min(Math.max(labelLen * 6.4 + 14, 84), 136);
+              const halfWidth = badgeWidth / 2;
 
               return (
                 <g 
@@ -541,6 +545,8 @@ export default function CausalGraphCanvas({
                   className="cursor-pointer"
                   style={{ opacity, transition: 'opacity 0.2s ease' }}
                 >
+                  <title>{`${edge.label}: ${edge.description}\nProvenance: ${edge.provenance}`}</title>
+
                   {/* Invisible Hitbox for Easy Clicking */}
                   <line
                     x1={src.x}
@@ -589,12 +595,12 @@ export default function CausalGraphCanvas({
                     markerEnd={markerId}
                   />
 
-                  {/* Edge Label Badge */}
+                  {/* Edge Label Badge with Safe Clearances */}
                   <g transform={`translate(${midX}, ${midY})`}>
                     <rect
-                      x={edge.isAblated ? -75 : -55}
+                      x={-halfWidth}
                       y="-9"
-                      width={edge.isAblated ? 150 : 110}
+                      width={badgeWidth}
                       height="18"
                       rx="4"
                       className="fill-white dark:fill-[#0d121f] stroke-slate-300 dark:stroke-[#222e45]"
@@ -605,7 +611,7 @@ export default function CausalGraphCanvas({
                       textAnchor="middle"
                       y="3.5"
                       fill={edge.color}
-                      fontSize="9"
+                      fontSize="8.5"
                       fontFamily="JetBrains Mono, monospace"
                       fontWeight="600"
                     >
@@ -635,6 +641,7 @@ export default function CausalGraphCanvas({
                   className="cursor-pointer"
                   style={{ opacity, transition: 'opacity 0.2s ease' }}
                 >
+                  <title>{`${node.label} (${node.role})\nFile: ${node.filePath}${node.lineRange ? ' ' + node.lineRange : ''}\nProvenance: ${node.provenance}\nDetails: ${node.details}`}</title>
                   {/* Pulsing Outer Ring for Root Cause */}
                   {node.pulse && !isAblated && (
                     <circle
@@ -710,7 +717,7 @@ export default function CausalGraphCanvas({
                     fontWeight="700"
                     fontFamily="Inter, sans-serif"
                   >
-                    {node.label}
+                    {node.label.length > 22 ? `${node.label.slice(0, 20)}…` : node.label}
                   </text>
 
                   {/* Node File Path / Role Subtext */}

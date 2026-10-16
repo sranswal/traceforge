@@ -499,7 +499,14 @@ ${missingEvidenceNotes.map(n => `- ${n}`).join('\n')}
 ### Recommended Next Debugging Steps
 - Verify repository AST ingestion and confirm that commit history and symbol edges are indexed in FalkorDB.`;
   } else {
-    const factLines = connectedEvidence.evidenceChain.map(e => `- [${e.type}] ${e.details} (${e.provenance})`);
+    const formatRelLabel = (t) => {
+      if (t === 'ENTRYPOINT_SYMBOL') return 'API Entrypoint';
+      if (t === 'SYMBOL_CALLS_SYMBOL') return 'Calls';
+      if (t === 'COMMIT_CHANGED_FILE') return 'Commit Modification';
+      if (t === 'FIX_RESOLVES_BUG') return 'Historical Precedent';
+      return (t || '').replace(/_/g, ' ');
+    };
+    const factLines = connectedEvidence.evidenceChain.map(e => `- ${formatRelLabel(e.type)}: ${e.details}`);
 
     const introducingCommitSha = connectedEvidence.matchingCommit?.shortSha || (report.suspectedCommit ? report.suspectedCommit.slice(0, 7) : '8f2a1b9');
     const introducingCommitMsg = connectedEvidence.matchingCommit?.message || 'Refactor mutex';
