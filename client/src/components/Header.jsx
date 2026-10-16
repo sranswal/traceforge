@@ -13,7 +13,7 @@ export default function Header({
   const isGraphConnected = graphHealth?.connected ?? true;
 
   return (
-    <header className="border-b border-[#1f2a3f] bg-[#0c111a] sticky top-0 z-50 transition-colors">
+    <header className="border-b border-slate-200 dark:border-[#1f2a3f] bg-white/95 dark:bg-[#0c111a]/95 backdrop-blur sticky top-0 z-50 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         {/* Brand: TraceForge */}
         <div className="flex items-center gap-3 shrink-0">
@@ -32,11 +32,11 @@ export default function Header({
                 e.target.src = '/icon.png';
               }}
             />
-            <span className="font-bold text-sm sm:text-base tracking-tight text-slate-100">
+            <span className="font-bold text-sm sm:text-base tracking-tight text-slate-900 dark:text-slate-100">
               TraceForge
             </span>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-violet-950/60 text-violet-300 border border-violet-800/40">
-              <Activity className="w-2.5 h-2.5 text-violet-400" />
+            <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800/40">
+              <Activity className="w-2.5 h-2.5 text-violet-600 dark:text-violet-400" />
               Incident Command
             </span>
           </button>
@@ -46,17 +46,17 @@ export default function Header({
         {currentRepo ? (
           <div className="hidden md:flex items-center gap-2.5 text-xs">
             {/* Repository Scope Pill */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#131a29] border border-[#23314b] text-slate-300">
-              <Terminal className="w-3.5 h-3.5 text-slate-400" />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-100 dark:bg-[#131a29] border border-slate-200 dark:border-[#23314b] text-slate-700 dark:text-slate-300">
+              <Terminal className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span className="font-mono font-medium truncate max-w-[200px]">
                 {currentRepo}
               </span>
               {isSample ? (
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40">
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/40">
                   Sample
                 </span>
               ) : (
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-teal-950/60 text-teal-300 border border-teal-800/40">
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/40">
                   Indexed
                 </span>
               )}
@@ -65,13 +65,13 @@ export default function Header({
             {/* FalkorDB Graph Readiness Indicator */}
             <div
               className={`flex items-center gap-1.5 px-2 py-1 rounded border text-[11px] font-mono ${isGraphConnected
-                  ? 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300'
-                  : 'bg-amber-950/30 border-amber-800/40 text-amber-300'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-800/40 dark:text-emerald-300'
+                  : 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-800/40 dark:text-amber-300'
                 }`}
               title={isGraphConnected ? 'FalkorDB Graph Live & Indexed' : 'FalkorDB Health Checking'}
             >
               <span
-                className={`w-2 h-2 rounded-full ${isGraphConnected ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]' : 'bg-amber-400'
+                className={`w-2 h-2 rounded-full ${isGraphConnected ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]' : 'bg-amber-500'
                   }`}
               />
               <span>FalkorDB Ready</span>
@@ -80,15 +80,15 @@ export default function Header({
             <button
               type="button"
               onClick={onNewSearch}
-              className="text-[11px] text-violet-400 hover:text-violet-300 hover:underline cursor-pointer ml-0.5"
+              className="text-[11px] text-violet-600 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 hover:underline cursor-pointer ml-0.5"
             >
               switch
             </button>
           </div>
         ) : (
-          <div className="hidden md:flex items-center gap-2 text-xs text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-violet-400" />
-            <span className="font-mono text-slate-300">Awaiting Repository Connection</span>
+          <div className="hidden md:flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-violet-500" />
+            <span className="font-mono text-slate-600 dark:text-slate-300">Awaiting Repository Connection</span>
           </div>
         )}
 
@@ -98,9 +98,9 @@ export default function Header({
             <button
               type="button"
               onClick={onNewSearch}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border border-[#27354d] bg-[#141b29] hover:bg-[#1a2438] text-slate-200 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border border-slate-200 dark:border-[#27354d] bg-slate-100 hover:bg-slate-200 dark:bg-[#141b29] dark:hover:bg-[#1a2438] text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
             >
-              <Search className="w-3.5 h-3.5 text-slate-400" />
+              <Search className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span className="hidden sm:inline">Connect Repo</span>
             </button>
           )}
@@ -108,14 +108,14 @@ export default function Header({
           <button
             type="button"
             onClick={onToggleTheme}
-            className="p-1.5 rounded border border-[#27354d] hover:bg-[#182133] text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded border border-slate-200 dark:border-[#27354d] bg-slate-100/60 dark:bg-transparent hover:bg-slate-200/70 dark:hover:bg-[#182133] text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             aria-label="Toggle theme"
           >
             {theme === 'dark' ? (
-              <Sun className="w-3.5 h-3.5" />
+              <Sun className="w-3.5 h-3.5 text-amber-400" />
             ) : (
-              <Moon className="w-3.5 h-3.5" />
+              <Moon className="w-3.5 h-3.5 text-slate-700" />
             )}
           </button>
 
@@ -123,7 +123,7 @@ export default function Header({
             href="https://github.com/sranswal/traceforge"
             target="_blank"
             rel="noreferrer"
-            className="p-1.5 rounded border border-[#27354d] hover:bg-[#182133] text-slate-400 hover:text-slate-100 transition-colors"
+            className="p-1.5 rounded border border-slate-200 dark:border-[#27354d] bg-slate-100/60 dark:bg-transparent hover:bg-slate-200/70 dark:hover:bg-[#182133] text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
             title="GitHub Repository"
           >
             <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">

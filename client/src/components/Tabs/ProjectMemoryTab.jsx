@@ -28,16 +28,20 @@ import {
   ChevronDown,
   FlaskConical,
   Link2,
-  MessageSquare
+  MessageSquare,
+  Crosshair,
+  Filter,
+  Eye,
+  X
 } from 'lucide-react';
 import { buildEntityInvestigationPrompt } from '../../utils/analysisPayload';
 
 const NODE_STYLES = {
   Repository: {
-    bg: 'bg-blue-50 dark:bg-blue-950/40',
-    border: 'border-blue-300 dark:border-blue-800',
-    text: 'text-blue-700 dark:text-[#58a6ff]',
-    dot: '#3b82f6',
+    bg: 'bg-violet-50 dark:bg-violet-950/40',
+    border: 'border-violet-300 dark:border-violet-800',
+    text: 'text-violet-700 dark:text-violet-300',
+    dot: '#8b5cf6',
     radius: 22
   },
   Component: {
@@ -48,16 +52,16 @@ const NODE_STYLES = {
     radius: 17
   },
   Bug: {
-    bg: 'bg-red-50 dark:bg-red-950/40',
-    border: 'border-red-300 dark:border-red-800',
-    text: 'text-red-700 dark:text-red-400',
-    dot: '#ef4444',
+    bg: 'bg-rose-50 dark:bg-rose-950/40',
+    border: 'border-rose-300 dark:border-rose-800',
+    text: 'text-rose-700 dark:text-rose-400',
+    dot: '#f43f5e',
     radius: 15
   },
   Fix: {
     bg: 'bg-emerald-50 dark:bg-emerald-950/40',
     border: 'border-emerald-300 dark:border-emerald-800',
-    text: 'text-emerald-700 dark:text-[#3fb950]',
+    text: 'text-emerald-700 dark:text-emerald-400',
     dot: '#10b981',
     radius: 15
   },
@@ -69,10 +73,10 @@ const NODE_STYLES = {
     radius: 15
   },
   File: {
-    bg: 'bg-neutral-100 dark:bg-[#21262d]',
-    border: 'border-neutral-300 dark:border-[#30363d]',
-    text: 'text-neutral-700 dark:text-[#c9d1d9]',
-    dot: '#8b949e',
+    bg: 'bg-slate-100 dark:bg-slate-800',
+    border: 'border-slate-300 dark:border-slate-700',
+    text: 'text-slate-700 dark:text-slate-300',
+    dot: '#64748b',
     radius: 14
   },
   Function: {
@@ -125,10 +129,10 @@ function ProvenanceBadge({ provenance }) {
   const isRecorded = provenance.toLowerCase().includes('recorded');
   return (
     <span
-      className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+      className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
         isRecorded
           ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/50'
-          : 'bg-neutral-100 dark:bg-[#21262d] text-neutral-600 dark:text-[#8b949e] border-neutral-200 dark:border-[#30363d]'
+          : 'bg-slate-100 dark:bg-[#1a2336] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-[#26344d]'
       }`}
     >
       {isRecorded ? `Recorded Memory · ${provenance}` : `Source-Derived · ${provenance}`}
@@ -151,31 +155,31 @@ function FileTreeItem({ node, depth = 0, filterText = '', onSelectTreeNode, sele
         }}
         className={`flex items-center gap-1.5 py-1 px-2 rounded transition-colors cursor-pointer group ${
           isSelected
-            ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-[#58a6ff] font-semibold'
+            ? 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 font-semibold'
             : isDirectory
-              ? 'text-neutral-800 dark:text-[#f0f6fc] font-medium hover:bg-neutral-100 dark:hover:bg-[#21262d]'
-              : 'text-neutral-600 dark:text-[#8b949e] hover:bg-neutral-100 dark:hover:bg-[#21262d]'
+              ? 'text-slate-800 dark:text-slate-200 font-medium hover:bg-slate-100 dark:hover:bg-[#1a2336]'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#1a2336]'
         }`}
         style={{ paddingLeft: `${depth * 1.1 + 0.5}rem` }}
       >
         {isDirectory ? (
           <>
-            <span className="text-neutral-400 dark:text-[#6e7681] w-3 shrink-0">
+            <span className="text-slate-400 dark:text-slate-500 w-3 shrink-0">
               {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             </span>
             {isOpen ? (
-              <FolderOpen className="w-3.5 h-3.5 text-blue-500 dark:text-[#58a6ff] shrink-0" />
+              <FolderOpen className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
             ) : (
-              <Folder className="w-3.5 h-3.5 text-blue-500 dark:text-[#58a6ff] shrink-0" />
+              <Folder className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
             )}
             <span className="truncate">{node.name}</span>
             {node.fileCount > 0 && (
-              <span className="text-[10px] text-neutral-400 dark:text-[#6e7681] font-sans font-normal ml-1">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-sans font-normal ml-1">
                 ({node.fileCount})
               </span>
             )}
             {node.role && (
-              <span className="ml-auto text-[10px] font-sans font-normal px-1.5 py-0.2 rounded bg-neutral-100 dark:bg-[#21262d] text-neutral-600 dark:text-[#8b949e] border border-neutral-200 dark:border-[#30363d] hidden sm:inline">
+              <span className="ml-auto text-[10px] font-sans font-normal px-1.5 py-0.2 rounded bg-slate-100 dark:bg-[#1e293d] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#2b3a56] hidden sm:inline">
                 {node.role}
               </span>
             )}
@@ -183,12 +187,12 @@ function FileTreeItem({ node, depth = 0, filterText = '', onSelectTreeNode, sele
         ) : (
           <>
             <span className="w-3 shrink-0" />
-            <FileCode className="w-3.5 h-3.5 text-neutral-400 dark:text-[#6e7681] shrink-0" />
-            <span className="truncate group-hover:text-blue-600 dark:group-hover:text-[#58a6ff]">
+            <FileCode className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" />
+            <span className="truncate group-hover:text-violet-600 dark:group-hover:text-violet-400">
               {node.name}
             </span>
             {formattedSize && (
-              <span className="ml-auto text-[10px] text-neutral-400 dark:text-[#6e7681] font-sans">
+              <span className="ml-auto text-[10px] text-slate-400 dark:text-slate-500 font-sans">
                 {formattedSize}
               </span>
             )}
@@ -235,6 +239,15 @@ export default function ProjectMemoryTab({
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [customEntity, setCustomEntity] = useState(null);
+
+  // Layout switcher: 'concentric' | 'hierarchical' | 'neighborhood'
+  const [layoutMode, setLayoutMode] = useState('concentric');
+  // 1-hop neighborhood focus filter
+  const [neighborhoodFocusNodeId, setNeighborhoodFocusNodeId] = useState(null);
+  // Custom user-dragged coordinates: { [nodeId]: { x, y } }
+  const [customNodeCoords, setCustomNodeCoords] = useState({});
+  const [activeDragNodeId, setActiveDragNodeId] = useState(null);
+  const svgRef = useRef(null);
 
   // Zoom & Pan state for SVG Graph Canvas
   const [zoom, setZoom] = useState(1);
@@ -313,10 +326,24 @@ export default function ProjectMemoryTab({
 
   const rawGraphEdges = memoryOverview?.graph?.edges || [];
 
-  // Filter graph nodes by search query and nodeTypeFilter
+  // Filter graph nodes by search query, nodeTypeFilter, and neighborhood focus
   const filteredGraphData = useMemo(() => {
+    let baseNodes = rawGraphNodes;
+    let baseEdges = rawGraphEdges;
+
+    // If 1-hop neighborhood focus is active, restrict base graph to focus node + connected neighbors
+    if (neighborhoodFocusNodeId) {
+      const allowedNodeIds = new Set([neighborhoodFocusNodeId]);
+      for (const e of rawGraphEdges) {
+        if (e.source === neighborhoodFocusNodeId) allowedNodeIds.add(e.target);
+        if (e.target === neighborhoodFocusNodeId) allowedNodeIds.add(e.source);
+      }
+      baseNodes = baseNodes.filter(n => allowedNodeIds.has(n.id));
+      baseEdges = baseEdges.filter(e => allowedNodeIds.has(e.source) && allowedNodeIds.has(e.target));
+    }
+
     const q = graphSearch.trim().toLowerCase();
-    const matchingNodes = rawGraphNodes.filter((n) => {
+    const matchingNodes = baseNodes.filter((n) => {
       const nLabel = n.label || n.type;
       const matchesType =
         nodeTypeFilter === 'ALL' ||
@@ -328,68 +355,152 @@ export default function ProjectMemoryTab({
         n.title?.toLowerCase().includes(q) ||
         n.subtitle?.toLowerCase().includes(q) ||
         nLabel?.toLowerCase().includes(q) ||
+        n.id?.toLowerCase().includes(q) ||
         JSON.stringify(n.details || {}).toLowerCase().includes(q)
       );
     });
 
-    // Always include Repository root or connected endpoints if filtering leaves nodes isolated
     const nodeIds = new Set(matchingNodes.map(n => n.id));
-    const matchingEdges = rawGraphEdges.filter(
+    const matchingEdges = baseEdges.filter(
       e => nodeIds.has(e.source) && nodeIds.has(e.target)
     );
 
     return { nodes: matchingNodes, edges: matchingEdges };
-  }, [rawGraphNodes, rawGraphEdges, graphSearch, nodeTypeFilter]);
+  }, [rawGraphNodes, rawGraphEdges, graphSearch, nodeTypeFilter, neighborhoodFocusNodeId]);
 
-  // Compute deterministic concentric multi-ring layout for the interactive SVG Graph Explorer
+  // Determine active selected node or edge
+  const activeNode = useMemo(() => {
+    if (customEntity) return customEntity;
+    if (selectedNodeId) {
+      const matchInRaw = rawGraphNodes.find(n => n.id === selectedNodeId);
+      if (matchInRaw) return matchInRaw;
+    }
+    return rawGraphNodes[0] || null;
+  }, [customEntity, selectedNodeId, rawGraphNodes]);
+
+  // Compute graph layout (Concentric, Hierarchical, or Neighborhood)
   const positionedGraph = useMemo(() => {
-    const nodes = filteredGraphData.nodes.slice(0, 36);
-    if (nodes.length === 0) return { nodes: [], edges: [] };
+    const nodes = filteredGraphData.nodes.slice(0, 48);
+    if (nodes.length === 0) return { nodes: [], edges: [], nodeById: new Map() };
 
-    const width = 760;
-    const height = 480;
+    const width = 840;
+    const height = 520;
     const centerX = width / 2;
     const centerY = height / 2;
 
-    const ring1 = []; // Components
-    const ring2 = []; // Files, Decisions, Bugs, Commits
-    const ring3 = []; // Functions, Classes, Fixes, Tests
-    let repoNode = null;
-
-    for (const n of nodes) {
-      const lbl = n.label || n.type;
-      if (lbl === 'Repository' && !repoNode) {
-        repoNode = n;
-      } else if (lbl === 'Component') {
-        ring1.push(n);
-      } else if (lbl === 'File' || lbl === 'TechnicalDecision' || lbl === 'Bug' || lbl === 'Commit') {
-        ring2.push(n);
-      } else {
-        ring3.push(n);
-      }
-    }
-
     const positioned = [];
-    if (repoNode) {
-      positioned.push({ ...repoNode, x: centerX, y: centerY });
-    }
 
-    const placeRing = (items, rx, ry, angleOffset = 0) => {
-      items.forEach((item, idx) => {
-        const angle = angleOffset + (2 * Math.PI * idx) / Math.max(items.length, 1);
+    if (layoutMode === 'neighborhood') {
+      // Focus node in center, 1-hop neighbors radiating around it
+      const targetCenterNode = (activeNode && nodes.find(n => n.id === activeNode.id)) || nodes[0];
+      positioned.push({ ...targetCenterNode, x: centerX, y: centerY });
+
+      const otherNodes = nodes.filter(n => n.id !== targetCenterNode.id);
+      const directNeighbors = otherNodes.filter(n =>
+        filteredGraphData.edges.some(e =>
+          (e.source === targetCenterNode.id && e.target === n.id) ||
+          (e.target === targetCenterNode.id && e.source === n.id)
+        )
+      );
+      const nonNeighbors = otherNodes.filter(n => !directNeighbors.includes(n));
+
+      // Inner ring: direct neighbors (radius ~155)
+      directNeighbors.forEach((item, idx) => {
+        const angle = (2 * Math.PI * idx) / Math.max(directNeighbors.length, 1);
         positioned.push({
           ...item,
-          x: Math.round(centerX + Math.cos(angle) * rx),
-          y: Math.round(centerY + Math.sin(angle) * ry)
+          x: Math.round(centerX + Math.cos(angle) * 165),
+          y: Math.round(centerY + Math.sin(angle) * 130)
         });
       });
-    };
 
-    placeRing(ring1, 125, 85, 0.15);
-    placeRing(ring2, 235, 155, 0.45);
-    placeRing(ring3, 330, 210, 0.8);
+      // Outer ring: non-neighbors (radius ~300)
+      nonNeighbors.forEach((item, idx) => {
+        const angle = 0.35 + (2 * Math.PI * idx) / Math.max(nonNeighbors.length, 1);
+        positioned.push({
+          ...item,
+          x: Math.round(centerX + Math.cos(angle) * 315),
+          y: Math.round(centerY + Math.sin(angle) * 215)
+        });
+      });
+    } else if (layoutMode === 'hierarchical') {
+      // Tiered hierarchical layout by entity taxonomy level
+      const tiers = {
+        0: [], // Repository
+        1: [], // Component
+        2: [], // File, Commit
+        3: [], // Symbol, Function, Class
+        4: []  // Bug, Fix, TechnicalDecision, Test
+      };
 
-    const nodeById = new Map(positioned.map(n => [n.id, n]));
+      for (const n of nodes) {
+        const lbl = n.label || n.type;
+        if (lbl === 'Repository') tiers[0].push(n);
+        else if (lbl === 'Component') tiers[1].push(n);
+        else if (lbl === 'File' || lbl === 'Commit') tiers[2].push(n);
+        else if (lbl === 'Function' || lbl === 'Class' || lbl === 'Symbol') tiers[3].push(n);
+        else tiers[4].push(n);
+      }
+
+      const activeTiers = Object.entries(tiers).filter(([, items]) => items.length > 0);
+      const tierCount = activeTiers.length;
+
+      activeTiers.forEach(([, items], tierIndex) => {
+        const y = Math.round(60 + (tierIndex * (height - 120)) / Math.max(tierCount - 1, 1));
+        items.forEach((item, idx) => {
+          const x = Math.round((width / (items.length + 1)) * (idx + 1));
+          positioned.push({ ...item, x, y });
+        });
+      });
+    } else {
+      // Concentric multi-ring layout
+      const ring1 = []; // Components
+      const ring2 = []; // Files, Decisions, Bugs, Commits
+      const ring3 = []; // Functions, Classes, Fixes, Tests
+      let repoNode = null;
+
+      for (const n of nodes) {
+        const lbl = n.label || n.type;
+        if (lbl === 'Repository' && !repoNode) {
+          repoNode = n;
+        } else if (lbl === 'Component') {
+          ring1.push(n);
+        } else if (lbl === 'File' || lbl === 'TechnicalDecision' || lbl === 'Bug' || lbl === 'Commit') {
+          ring2.push(n);
+        } else {
+          ring3.push(n);
+        }
+      }
+
+      if (repoNode) {
+        positioned.push({ ...repoNode, x: centerX, y: centerY });
+      }
+
+      const placeRing = (items, rx, ry, angleOffset = 0) => {
+        items.forEach((item, idx) => {
+          const angle = angleOffset + (2 * Math.PI * idx) / Math.max(items.length, 1);
+          positioned.push({
+            ...item,
+            x: Math.round(centerX + Math.cos(angle) * rx),
+            y: Math.round(centerY + Math.sin(angle) * ry)
+          });
+        });
+      };
+
+      placeRing(ring1, 140, 95, 0.15);
+      placeRing(ring2, 260, 170, 0.45);
+      placeRing(ring3, 355, 230, 0.8);
+    }
+
+    // Apply custom dragged node positions
+    const finalNodes = positioned.map(n => {
+      if (customNodeCoords[n.id]) {
+        return { ...n, x: customNodeCoords[n.id].x, y: customNodeCoords[n.id].y };
+      }
+      return n;
+    });
+
+    const nodeById = new Map(finalNodes.map(n => [n.id, n]));
     const validEdges = filteredGraphData.edges
       .filter(e => nodeById.has(e.source) && nodeById.has(e.target))
       .map(e => ({
@@ -398,19 +509,8 @@ export default function ProjectMemoryTab({
         targetNode: nodeById.get(e.target)
       }));
 
-    return { nodes: positioned, edges: validEdges, nodeById };
-  }, [filteredGraphData]);
-
-  // Determine active selected node or edge
-  const activeNode = useMemo(() => {
-    if (customEntity) return customEntity;
-    if (selectedNodeId && positionedGraph.nodeById?.has(selectedNodeId)) {
-      return positionedGraph.nodeById.get(selectedNodeId);
-    }
-    const fullMatch = rawGraphNodes.find(n => n.id === selectedNodeId);
-    if (fullMatch) return fullMatch;
-    return positionedGraph.nodes[0] || rawGraphNodes[0] || null;
-  }, [customEntity, selectedNodeId, positionedGraph, rawGraphNodes]);
+    return { nodes: finalNodes, edges: validEdges, nodeById };
+  }, [filteredGraphData, layoutMode, activeNode, customNodeCoords]);
 
   const activeEdge = useMemo(() => {
     if (!selectedEdgeId) return null;
@@ -528,11 +628,53 @@ export default function ProjectMemoryTab({
   };
 
   // Zoom & Pan handlers
-  const handleZoomIn = () => setZoom(z => Math.min(z + 0.2, 2.4));
-  const handleZoomOut = () => setZoom(z => Math.max(z - 0.2, 0.5));
+  const handleZoomIn = () => setZoom(z => Math.min(Number((z + 0.15).toFixed(2)), 2.5));
+  const handleZoomOut = () => setZoom(z => Math.max(Number((z - 0.15).toFixed(2)), 0.4));
   const handleResetView = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+    setCustomNodeCoords({});
+    setSelectedEdgeId(null);
+    setNeighborhoodFocusNodeId(null);
+  };
+
+  const handleFitViewport = () => {
+    if (positionedGraph.nodes.length === 0) {
+      handleResetView();
+      return;
+    }
+    const xs = positionedGraph.nodes.map(n => n.x);
+    const ys = positionedGraph.nodes.map(n => n.y);
+    const minX = Math.min(...xs) - 50;
+    const maxX = Math.max(...xs) + 50;
+    const minY = Math.min(...ys) - 50;
+    const maxY = Math.max(...ys) + 50;
+    const graphW = Math.max(maxX - minX, 120);
+    const graphH = Math.max(maxY - minY, 120);
+    const scale = Math.min(Math.max(Math.min(840 / graphW, 520 / graphH), 0.5), 2.0);
+    const midX = (minX + maxX) / 2;
+    const midY = (minY + maxY) / 2;
+    setZoom(Number(scale.toFixed(2)));
+    setPan({
+      x: Math.round(420 - midX * scale),
+      y: Math.round(260 - midY * scale)
+    });
+  };
+
+  const handleCenterOnNode = (node) => {
+    if (!node) return;
+    setSelectedNodeId(node.id);
+    setSelectedEdgeId(null);
+    setCustomEntity(null);
+    setPan({
+      x: Math.round(420 - node.x * zoom),
+      y: Math.round(260 - node.y * zoom)
+    });
+  };
+
+  const handleNodeMouseDown = (e, node) => {
+    e.stopPropagation();
+    setActiveDragNodeId(node.id);
   };
 
   const handleMouseDown = (e) => {
@@ -542,6 +684,18 @@ export default function ProjectMemoryTab({
   };
 
   const handleMouseMove = (e) => {
+    if (activeDragNodeId && svgRef.current) {
+      const rect = svgRef.current.getBoundingClientRect();
+      const rawX = e.clientX - rect.left;
+      const rawY = e.clientY - rect.top;
+      const svgX = Math.round((rawX - pan.x - 420 * (1 - zoom)) / zoom);
+      const svgY = Math.round((rawY - pan.y - 260 * (1 - zoom)) / zoom);
+      setCustomNodeCoords(prev => ({
+        ...prev,
+        [activeDragNodeId]: { x: svgX, y: svgY }
+      }));
+      return;
+    }
     if (!isDragging) return;
     setPan({
       x: e.clientX - dragStartRef.current.x,
@@ -549,7 +703,16 @@ export default function ProjectMemoryTab({
     });
   };
 
-  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseUp = () => {
+    setActiveDragNodeId(null);
+    setIsDragging(false);
+  };
+
+  const handleSvgWheel = (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.12 : 0.88;
+    setZoom((prev) => Math.min(Math.max(Number((prev * factor).toFixed(2)), 0.4), 2.5));
+  };
 
   const handleInvestigateEntity = (entity) => {
     if (!entity || !onAskInCodebase) return;
@@ -751,34 +914,34 @@ export default function ProjectMemoryTab({
   return (
     <div className="space-y-5">
       {/* 1. Compact FalkorDB Workspace Status & Action Header */}
-      <div className="rounded-lg border border-neutral-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div className="rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#101624] px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shadow-xs">
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center gap-2">
-            <Database className="w-4 h-4 text-blue-600 dark:text-[#58a6ff]" />
-            <h2 className="text-sm font-semibold text-neutral-900 dark:text-[#f0f6fc]">
+            <Database className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               {providerName} Project Memory Workspace
             </h2>
           </div>
 
           {isConnected ? (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-[#3fb950] border border-emerald-200 dark:border-emerald-900/50">
-              <CheckCircle2 className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
               <span>Connected · {counts.relationships || rawGraphEdges.length} relationships</span>
             </span>
           ) : !isConfigured ? (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50">
-              <AlertCircle className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+              <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
               <span>{providerName} Not Configured (Static Fallback)</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/50">
-              <AlertCircle className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/60">
+              <AlertCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
               <span>{providerName} Unavailable</span>
             </span>
           )}
 
           {/* Compact Entity Counters */}
-          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-neutral-500 dark:text-[#8b949e] pl-2 border-l border-neutral-200 dark:border-[#30363d]">
+          <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 pl-2 border-l border-slate-200 dark:border-[#1f2a3f]">
             <span>{counts.components} components</span>
             <span>·</span>
             <span>{counts.files} files</span>
@@ -789,7 +952,7 @@ export default function ProjectMemoryTab({
             <span>·</span>
             <span className="text-red-600 dark:text-red-400">{counts.bugs} bugs</span>
             <span>·</span>
-            <span className="text-emerald-600 dark:text-[#3fb950]">{counts.fixes} fixes</span>
+            <span className="text-emerald-600 dark:text-emerald-400">{counts.fixes} fixes</span>
           </div>
         </div>
 
@@ -797,7 +960,7 @@ export default function ProjectMemoryTab({
           <button
             type="button"
             onClick={() => setIsRecordOpen(prev => !prev)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white transition-colors shadow-xs"
           >
             <PlusCircle className="w-3.5 h-3.5" />
             <span>{isRecordOpen ? 'Hide Memory Recorder' : 'Record Decision / Bug & Fix'}</span>
@@ -807,7 +970,7 @@ export default function ProjectMemoryTab({
             type="button"
             onClick={onRefreshMemory}
             disabled={isLoadingMemory}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#21262d] hover:bg-neutral-100 dark:hover:bg-[#30363d] text-neutral-700 dark:text-[#c9d1d9] disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200 disabled:opacity-50 transition-colors"
           >
             {isLoadingMemory ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -821,20 +984,20 @@ export default function ProjectMemoryTab({
 
       {/* Unconfigured or Error Banner */}
       {!isConfigured && (
-        <div className="p-3.5 rounded-lg bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+        <div className="p-3.5 rounded-lg bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
           <div>
             <p className="font-semibold">{providerName} Project Memory is not configured</p>
-            <p className="mt-0.5 text-amber-700 dark:text-amber-400/90">
-              Configure your <code className="font-mono">{providerName}</code> connection in <code className="font-mono">.env</code> to persist decisions, bugs, fixes, and symbol call graphs. Static file & directory inspection remains active below.
+            <p className="mt-0.5 text-amber-700 dark:text-amber-300/90">
+              Configure your <code className="font-mono bg-amber-100 dark:bg-amber-900/40 px-1 py-0.5 rounded">{providerName}</code> connection in <code className="font-mono bg-amber-100 dark:bg-amber-900/40 px-1 py-0.5 rounded">.env</code> to persist decisions, bugs, fixes, and symbol call graphs. Static file & directory inspection remains active below.
             </p>
           </div>
         </div>
       )}
 
       {memoryError && (
-        <div className="p-3.5 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 text-xs text-red-700 dark:text-red-400 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+        <div className="p-3.5 rounded-lg bg-red-50/90 dark:bg-red-950/30 border border-red-200 dark:border-red-800/60 text-xs text-red-800 dark:text-red-200 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
           <div>
             <p className="font-semibold">Failed to query {providerName} Project Memory</p>
             <p className="mt-0.5">{memoryError}</p>
@@ -844,16 +1007,16 @@ export default function ProjectMemoryTab({
 
       {/* Collapsible Record Decision / Bug & Fix Drawer */}
       {isRecordOpen && (
-        <div className="rounded-lg border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-[#161b22] p-4 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-neutral-200 dark:border-[#30363d]">
+        <div className="rounded-xl border border-violet-200 dark:border-violet-900/50 bg-white dark:bg-[#101624] p-4 space-y-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200 dark:border-[#1f2a3f]">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setRecordMode('bug_fix')}
-                className={`px-3 py-1 text-xs font-medium rounded border transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg border transition-colors ${
                   recordMode === 'bug_fix'
-                    ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300'
-                    : 'bg-neutral-50 dark:bg-[#21262d] border-neutral-200 dark:border-[#30363d] text-neutral-600 dark:text-[#8b949e]'
+                    ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 font-semibold'
+                    : 'bg-slate-50 dark:bg-[#151c2c] border-slate-200 dark:border-[#1f2a3f] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 Record Bug & Fix
@@ -861,10 +1024,10 @@ export default function ProjectMemoryTab({
               <button
                 type="button"
                 onClick={() => setRecordMode('decision')}
-                className={`px-3 py-1 text-xs font-medium rounded border transition-colors ${
+                className={`px-3 py-1 text-xs font-medium rounded-lg border transition-colors ${
                   recordMode === 'decision'
-                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300'
-                    : 'bg-neutral-50 dark:bg-[#21262d] border-neutral-200 dark:border-[#30363d] text-neutral-600 dark:text-[#8b949e]'
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-semibold'
+                    : 'bg-slate-50 dark:bg-[#151c2c] border-slate-200 dark:border-[#1f2a3f] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 Record Technical Decision
@@ -874,7 +1037,7 @@ export default function ProjectMemoryTab({
             <button
               type="button"
               onClick={handleLoadDemoPreset}
-              className="text-[11px] font-mono text-blue-600 dark:text-[#58a6ff] hover:underline flex items-center gap-1"
+              className="text-[11px] font-mono text-violet-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
             >
               <Sparkles className="w-3 h-3" />
               <span>Fill Flagship Demo Preset ("The bug that came back")</span>
@@ -886,7 +1049,7 @@ export default function ProjectMemoryTab({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Bug Title *
                     </label>
                     <input
@@ -895,17 +1058,17 @@ export default function ProjectMemoryTab({
                       value={bugTitle}
                       onChange={e => setBugTitle(e.target.value)}
                       placeholder="e.g. Authentication API 401 error on valid tokens due to clock skew"
-                      className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc]"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Severity
                     </label>
                     <select
                       value={severity}
                       onChange={e => setSeverity(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc]"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 focus:outline-none focus:border-violet-500"
                     >
                       <option value="critical">Critical</option>
                       <option value="high">High</option>
@@ -917,7 +1080,7 @@ export default function ProjectMemoryTab({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Root Cause & Description *
                     </label>
                     <input
@@ -926,11 +1089,11 @@ export default function ProjectMemoryTab({
                       value={bugDescription}
                       onChange={e => setBugDescription(e.target.value)}
                       placeholder="Describe why the failure occurred..."
-                      className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc]"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Observed Symptoms
                     </label>
                     <input
@@ -938,14 +1101,14 @@ export default function ProjectMemoryTab({
                       value={symptoms}
                       onChange={e => setSymptoms(e.target.value)}
                       placeholder="e.g. Intermittent 401 Unauthorized responses"
-                      className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc]"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Affected Component
                     </label>
                     <input
@@ -953,11 +1116,11 @@ export default function ProjectMemoryTab({
                       value={componentPath}
                       onChange={e => setComponentPath(e.target.value)}
                       placeholder="e.g. server or services"
-                      className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc] font-mono text-[11px]"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 font-mono text-[11px] focus:outline-none focus:border-violet-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Source File Path
                     </label>
                     <input
@@ -965,11 +1128,11 @@ export default function ProjectMemoryTab({
                       value={filePath}
                       onChange={e => setFilePath(e.target.value)}
                       placeholder="e.g. services/auth.js"
-                      className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc] font-mono text-[11px]"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 font-mono text-[11px] focus:outline-none focus:border-violet-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Commit SHA
                     </label>
                     <input
@@ -977,13 +1140,13 @@ export default function ProjectMemoryTab({
                       value={commitSha}
                       onChange={e => setCommitSha(e.target.value)}
                       placeholder="e.g. 9f8e7d6"
-                      className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc] font-mono text-[11px]"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 font-mono text-[11px] focus:outline-none focus:border-violet-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                     Verified Fix Summary
                   </label>
                   <input
@@ -991,7 +1154,7 @@ export default function ProjectMemoryTab({
                     value={fixSummary}
                     onChange={e => setFixSummary(e.target.value)}
                     placeholder="How the bug was resolved..."
-                    className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc]"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500"
                   />
                 </div>
               </>
@@ -999,7 +1162,7 @@ export default function ProjectMemoryTab({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
-                    <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Technical Decision Title *
                     </label>
                     <input
@@ -1008,11 +1171,11 @@ export default function ProjectMemoryTab({
                       value={decisionTitle}
                       onChange={e => setDecisionTitle(e.target.value)}
                       placeholder="e.g. Enforce strict stateless JWT exp claim validation"
-                      className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc]"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                    <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Affected Component
                     </label>
                     <input
@@ -1020,13 +1183,13 @@ export default function ProjectMemoryTab({
                       value={decisionComponent}
                       onChange={e => setDecisionComponent(e.target.value)}
                       placeholder="e.g. services or server"
-                      className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc] font-mono text-[11px]"
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 font-mono text-[11px] focus:outline-none focus:border-violet-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-neutral-600 dark:text-[#8b949e] mb-1">
+                  <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 mb-1">
                     Architectural Rationale *
                   </label>
                   <input
@@ -1035,7 +1198,7 @@ export default function ProjectMemoryTab({
                     value={decisionRationale}
                     onChange={e => setDecisionRationale(e.target.value)}
                     placeholder="Why this decision was made and what constraints it imposes..."
-                    className="w-full px-2.5 py-1.5 rounded border border-neutral-300 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] text-neutral-900 dark:text-[#f0f6fc]"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-[#222e44] bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500"
                   />
                 </div>
               </>
@@ -1046,7 +1209,7 @@ export default function ProjectMemoryTab({
                 <span
                   className={`text-[11px] font-medium ${
                     saveFeedback.type === 'success'
-                      ? 'text-emerald-600 dark:text-[#3fb950]'
+                      ? 'text-emerald-600 dark:text-emerald-400'
                       : 'text-red-600 dark:text-red-400'
                   }`}
                 >
@@ -1059,7 +1222,7 @@ export default function ProjectMemoryTab({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-4 py-1.5 text-xs font-medium rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 transition-colors"
+                className="px-4 py-1.5 text-xs font-medium rounded-lg bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white disabled:opacity-50 transition-colors shadow-xs"
               >
                 {isSaving ? `Persisting to ${providerName}...` : `Save to ${providerName} Graph`}
               </button>
@@ -1071,31 +1234,31 @@ export default function ProjectMemoryTab({
       {/* 2. Primary Split-Screen Workspace: Left = Graph Explorer (7 cols), Right = Selected Entity Inspector (5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* LEFT PANEL: Graph Explorer & Integrated Repository File Finder */}
-        <div className="lg:col-span-7 rounded-lg border border-neutral-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] overflow-hidden flex flex-col">
+        <div className="lg:col-span-7 rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#101624] overflow-hidden flex flex-col shadow-xs">
           {/* Graph Explorer Toolbar */}
-          <div className="p-3 border-b border-neutral-200 dark:border-[#30363d] bg-neutral-50 dark:bg-[#0d1117] space-y-2.5">
+          <div className="p-3 border-b border-slate-200 dark:border-[#1f2a3f] bg-slate-50/80 dark:bg-[#0b0f17]/80 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               {/* Mode Switcher: Graph Canvas vs Repository File Tree */}
-              <div className="inline-flex rounded border border-neutral-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] p-0.5">
+              <div className="inline-flex rounded-lg border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#151c2c] p-0.5 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setWorkspaceMode('graph')}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                     workspaceMode === 'graph'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-neutral-600 dark:text-[#8b949e] hover:text-neutral-900 dark:hover:text-[#f0f6fc]'
+                      ? 'bg-violet-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
                   <GitFork className="w-3.5 h-3.5" />
-                  <span>{providerName} Graph Explorer ({positionedGraph.nodes.length})</span>
+                  <span>{providerName} Explorer ({positionedGraph.nodes.length})</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setWorkspaceMode('files')}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                     workspaceMode === 'files'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-neutral-600 dark:text-[#8b949e] hover:text-neutral-900 dark:hover:text-[#f0f6fc]'
+                      ? 'bg-violet-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
                   <FolderTree className="w-3.5 h-3.5" />
@@ -1103,51 +1266,102 @@ export default function ProjectMemoryTab({
                 </button>
               </div>
 
-              {/* Zoom & Reset Controls */}
+              {/* Layout Switcher & Zoom / Viewport Controls */}
               {workspaceMode === 'graph' && (
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={handleZoomOut}
-                    className="p-1.5 rounded border border-neutral-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] text-neutral-600 dark:text-[#8b949e] hover:text-neutral-900 dark:hover:text-[#f0f6fc]"
-                    title="Zoom Out"
-                  >
-                    <ZoomOut className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-[10px] font-mono px-1.5 text-neutral-500 dark:text-[#8b949e]">
-                    {Math.round(zoom * 100)}%
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleZoomIn}
-                    className="p-1.5 rounded border border-neutral-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] text-neutral-600 dark:text-[#8b949e] hover:text-neutral-900 dark:hover:text-[#f0f6fc]"
-                    title="Zoom In"
-                  >
-                    <ZoomIn className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResetView}
-                    className="p-1.5 rounded border border-neutral-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] text-neutral-600 dark:text-[#8b949e] hover:text-neutral-900 dark:hover:text-[#f0f6fc]"
-                    title="Fit / Reset View"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {/* Layout Selector */}
+                  <div className="flex items-center rounded-lg border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#151c2c] px-2 py-0.5">
+                    <span className="text-[10px] uppercase font-mono text-slate-400 dark:text-slate-500 mr-1.5">Layout</span>
+                    <select
+                      value={layoutMode}
+                      onChange={(e) => setLayoutMode(e.target.value)}
+                      className="bg-transparent text-[11px] font-mono text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+                      title="Choose layout visualization algorithm"
+                    >
+                      <option value="concentric" className="bg-white dark:bg-[#101624] text-slate-900 dark:text-slate-100">Concentric Rings</option>
+                      <option value="hierarchical" className="bg-white dark:bg-[#101624] text-slate-900 dark:text-slate-100">Hierarchical Tier</option>
+                      <option value="neighborhood" className="bg-white dark:bg-[#101624] text-slate-900 dark:text-slate-100">Radial Focus</option>
+                    </select>
+                  </div>
+
+                  {/* Zoom controls */}
+                  <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#151c2c] p-0.5">
+                    <button
+                      type="button"
+                      onClick={handleZoomOut}
+                      className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[10px] font-mono px-1 min-w-[34px] text-center text-slate-600 dark:text-slate-400">
+                      {Math.round(zoom * 100)}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleZoomIn}
+                      className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                      title="Zoom In"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleFitViewport}
+                      className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors border-l border-slate-200 dark:border-[#1f2a3f]"
+                      title="Fit to Viewport"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetView}
+                      className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                      title="Reset Pan & Zoom"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* 1-Hop Focus Banner if active */}
+            {neighborhoodFocusNodeId && (
+              <div className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/60 text-xs text-cyan-800 dark:text-cyan-300">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Crosshair className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                  <span className="truncate">
+                    1-Hop Neighborhood Isolation: <strong className="font-mono">{activeNode?.title || neighborhoodFocusNodeId}</strong> ({positionedGraph.nodes.length} nodes, {positionedGraph.edges.length} edges)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNeighborhoodFocusNodeId(null)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono rounded bg-white dark:bg-[#101624] border border-cyan-300 dark:border-cyan-800 hover:bg-cyan-100 dark:hover:bg-cyan-950 text-cyan-700 dark:text-cyan-300 transition-colors shrink-0"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Clear Focus</span>
+                </button>
+              </div>
+            )}
+
             {/* Search & Node Type Filter Bar */}
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-neutral-400 dark:text-[#6e7681]" />
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400 dark:text-slate-500" />
                 <input
                   type="text"
                   value={graphSearch}
                   onChange={e => setGraphSearch(e.target.value)}
-                  placeholder="Search graph nodes, symbols, components, or files..."
-                  className="w-full pl-8 pr-3 py-1 text-xs rounded border border-neutral-300 dark:border-[#30363d] bg-white dark:bg-[#161b22] text-neutral-900 dark:text-[#f0f6fc] placeholder-neutral-400 dark:placeholder-[#6e7681] focus:outline-none focus:border-blue-500"
+                  placeholder="Search nodes by name, type, path, SHA, or attribute..."
+                  className="w-full pl-8 pr-20 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#101624] text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 shadow-2xs"
                 />
+                {graphSearch.trim() && (
+                  <span className="absolute right-2.5 top-2 text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-[#151c2c] px-1.5 py-0.5 rounded">
+                    {positionedGraph.nodes.length} matches
+                  </span>
+                )}
               </div>
 
               {workspaceMode === 'graph' && (
@@ -1165,10 +1379,10 @@ export default function ProjectMemoryTab({
                       key={tab.id}
                       type="button"
                       onClick={() => setNodeTypeFilter(tab.id)}
-                      className={`px-2 py-1 text-[10px] font-mono rounded border whitespace-nowrap transition-colors ${
+                      className={`px-2.5 py-1.5 text-[10px] font-mono rounded-lg border whitespace-nowrap transition-colors ${
                         nodeTypeFilter === tab.id
-                          ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 text-blue-700 dark:text-[#58a6ff] font-semibold'
-                          : 'bg-white dark:bg-[#161b22] border-neutral-200 dark:border-[#30363d] text-neutral-600 dark:text-[#8b949e]'
+                          ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-300 dark:border-violet-800 text-violet-700 dark:text-violet-300 font-semibold'
+                          : 'bg-white dark:bg-[#101624] border-slate-200 dark:border-[#1f2a3f] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                     >
                       {tab.label}
@@ -1181,17 +1395,22 @@ export default function ProjectMemoryTab({
 
           {/* Main Left Body: Interactive SVG Graph OR Integrated File Tree */}
           {workspaceMode === 'graph' ? (
-            <div className="relative bg-neutral-950/5 dark:bg-[#090d13] select-none overflow-hidden">
+            <div className="relative bg-slate-100/60 dark:bg-[#070a10] select-none overflow-hidden">
               {positionedGraph.nodes.length > 0 ? (
                 <svg
+                  ref={svgRef}
                   viewBox="0 0 760 480"
-                  className={`w-full h-[460px] sm:h-[520px] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                  className={`w-full h-[460px] sm:h-[520px] ${activeDragNodeId ? 'cursor-grabbing' : isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                  onWheel={handleSvgWheel}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
                 >
                   <defs>
+                    <pattern id="mem-explorer-grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                      <circle cx="2" cy="2" r="1" className="fill-slate-300 dark:fill-slate-800/80" />
+                    </pattern>
                     <marker
                       id="arrow-source"
                       viewBox="0 0 10 10"
@@ -1223,9 +1442,12 @@ export default function ProjectMemoryTab({
                       markerHeight="6"
                       orient="auto-start-reverse"
                     >
-                      <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8" />
+                      <path d="M 0 1 L 10 5 L 0 9 z" fill="#06b6d4" />
                     </marker>
                   </defs>
+
+                  {/* Dot Grid Background */}
+                  <rect width="100%" height="100%" fill="url(#mem-explorer-grid)" />
 
                   <g
                     transform={`translate(${pan.x + 380 * (1 - zoom)}, ${pan.y + 240 * (1 - zoom)}) scale(${zoom})`}
@@ -1261,7 +1483,7 @@ export default function ProjectMemoryTab({
                             x2={edge.targetNode.x}
                             y2={edge.targetNode.y}
                             stroke="transparent"
-                            strokeWidth="12"
+                            strokeWidth="14"
                           />
                           <line
                             x1={edge.sourceNode.x}
@@ -1270,14 +1492,14 @@ export default function ProjectMemoryTab({
                             y2={edge.targetNode.y}
                             stroke={
                               isSelectedEdge || isIncidentToActive
-                                ? '#38bdf8'
+                                ? '#06b6d4'
                                 : isRecordedEdge
                                   ? '#f59e0b'
-                                  : '#475569'
+                                  : '#64748b'
                             }
-                            strokeWidth={isSelectedEdge || isIncidentToActive ? 2.4 : 1.4}
+                            strokeWidth={isSelectedEdge || isIncidentToActive ? 2.5 : 1.4}
                             strokeDasharray={isRecordedEdge ? '5,3' : undefined}
-                            strokeOpacity={isDimmed ? 0.2 : 0.85}
+                            strokeOpacity={isDimmed ? 0.18 : 0.85}
                             markerEnd={
                               isSelectedEdge || isIncidentToActive
                                 ? 'url(#arrow-active)'
@@ -1287,14 +1509,24 @@ export default function ProjectMemoryTab({
                             }
                           />
                           {(isSelectedEdge || isIncidentToActive) && (
-                            <text
-                              x={midX}
-                              y={midY - 5}
-                              textAnchor="middle"
-                              className="fill-sky-500 dark:fill-sky-300 text-[8px] font-mono pointer-events-none"
-                            >
-                              {edge.type}
-                            </text>
+                            <g transform={`translate(${midX}, ${midY - 4})`} className="pointer-events-none">
+                              <rect
+                                x={-edge.type.length * 3.2 - 6}
+                                y={-10}
+                                width={edge.type.length * 6.4 + 12}
+                                height={14}
+                                rx="3"
+                                className="fill-white dark:fill-[#101624] stroke-cyan-500/50"
+                                strokeWidth="0.8"
+                              />
+                              <text
+                                textAnchor="middle"
+                                className="fill-cyan-600 dark:fill-cyan-400 text-[8.5px] font-mono font-semibold"
+                                dy="-1"
+                              >
+                                {edge.type}
+                              </text>
+                            </g>
                           )}
                         </g>
                       );
@@ -1314,6 +1546,7 @@ export default function ProjectMemoryTab({
                           key={node.id}
                           data-graph-interactive="true"
                           transform={`translate(${node.x}, ${node.y})`}
+                          onMouseDown={(e) => handleNodeMouseDown(e, node)}
                           onClick={(e) => {
                             e.stopPropagation();
                             setCustomEntity(null);
@@ -1321,21 +1554,33 @@ export default function ProjectMemoryTab({
                             setSelectedNodeId(node.id);
                           }}
                           className="cursor-pointer transition-opacity"
-                          style={{ opacity: isDimmed ? 0.3 : 1 }}
+                          style={{ opacity: isDimmed ? 0.25 : 1 }}
                         >
+                          {/* Selected / Neighbor Halo Rings */}
                           {isSelected && (
                             <circle
                               r={r + 6}
                               fill="none"
-                              stroke="#38bdf8"
+                              stroke="#06b6d4"
                               strokeWidth="2.5"
-                              strokeDasharray="3,2"
+                              strokeDasharray="4,2"
                             />
                           )}
+                          {isNeighbor && !isSelected && (
+                            <circle
+                              r={r + 4}
+                              fill="none"
+                              stroke="#8b5cf6"
+                              strokeWidth="1.8"
+                              strokeDasharray="2,2"
+                              opacity="0.85"
+                            />
+                          )}
+
                           <circle
                             r={r}
                             fill={style.dot}
-                            fillOpacity={isSelected ? 1 : 0.88}
+                            fillOpacity={isSelected ? 1 : 0.9}
                             stroke={isSelected ? '#ffffff' : '#0f172a'}
                             strokeWidth={isSelected ? 2.5 : 1.5}
                           />
@@ -1347,12 +1592,14 @@ export default function ProjectMemoryTab({
                             {lbl.slice(0, 3).toUpperCase()}
                           </text>
                           <text
-                            y={r + 12}
+                            y={r + 13}
                             textAnchor="middle"
                             className={`text-[9.5px] font-mono pointer-events-none ${
                               isSelected
-                                ? 'fill-blue-600 dark:fill-[#58a6ff] font-bold'
-                                : 'fill-neutral-700 dark:fill-[#c9d1d9]'
+                                ? 'fill-violet-700 dark:fill-cyan-400 font-bold'
+                                : isNeighbor
+                                  ? 'fill-slate-900 dark:fill-slate-100 font-semibold'
+                                  : 'fill-slate-700 dark:fill-slate-300'
                             }`}
                           >
                             {node.title?.length > 22
@@ -1365,9 +1612,9 @@ export default function ProjectMemoryTab({
                   </g>
                 </svg>
               ) : (
-                <div className="h-[420px] flex flex-col items-center justify-center p-6 text-center text-xs text-neutral-500 dark:text-[#8b949e]">
-                  <Database className="w-8 h-8 text-neutral-400 dark:text-[#6e7681] mb-2" />
-                  <p className="font-semibold text-neutral-700 dark:text-[#c9d1d9]">
+                <div className="h-[420px] flex flex-col items-center justify-center p-6 text-center text-xs text-slate-500 dark:text-slate-400">
+                  <Database className="w-8 h-8 text-slate-400 dark:text-slate-600 mb-2" />
+                  <p className="font-semibold text-slate-700 dark:text-slate-200">
                     No matching graph nodes for the current filter
                   </p>
                   <p className="mt-1 max-w-sm">
@@ -1377,13 +1624,13 @@ export default function ProjectMemoryTab({
               )}
 
               {/* Graph Legend Footer */}
-              <div className="px-3 py-2 border-t border-neutral-200 dark:border-[#30363d] bg-white/90 dark:bg-[#161b22]/90 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-neutral-500 dark:text-[#8b949e]">
+              <div className="px-3 py-2 border-t border-slate-200 dark:border-[#1f2a3f] bg-white/95 dark:bg-[#101624]/95 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-slate-500 dark:text-slate-400">
                 <div className="flex flex-wrap items-center gap-2.5">
                   {Object.entries({
-                    Repository: '#3b82f6',
+                    Repository: '#8b5cf6',
                     Component: '#6366f1',
-                    File: '#8b949e',
-                    Symbol: '#a855f7',
+                    File: '#64748b',
+                    Symbol: '#d946ef',
                     Bug: '#ef4444',
                     Fix: '#10b981',
                     Decision: '#f59e0b',
@@ -1401,6 +1648,7 @@ export default function ProjectMemoryTab({
                 <div className="flex items-center gap-3">
                   <span>── Source-Derived</span>
                   <span className="text-amber-600 dark:text-amber-400">- - Recorded Memory</span>
+                  <span className="text-cyan-600 dark:text-cyan-400">● Drag node to pin</span>
                 </div>
               </div>
             </div>
@@ -1408,8 +1656,8 @@ export default function ProjectMemoryTab({
             /* Integrated Repository File & Directory Explorer (replaces standalone Files tab) */
             <div className="p-3 max-h-[520px] overflow-y-auto space-y-3">
               {graphSearch.trim() && matchingFlatFiles.length > 0 && (
-                <div className="p-2.5 rounded border border-blue-200 dark:border-blue-900/50 bg-blue-50/40 dark:bg-blue-950/20 space-y-1.5">
-                  <span className="text-[10px] font-mono uppercase text-blue-700 dark:text-[#58a6ff] block">
+                <div className="p-2.5 rounded-lg border border-violet-200 dark:border-violet-900/50 bg-violet-50/40 dark:bg-violet-950/20 space-y-1.5">
+                  <span className="text-[10px] font-mono uppercase text-violet-700 dark:text-cyan-400 block font-semibold">
                     Direct File Path Matches ({matchingFlatFiles.length})
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
@@ -1418,9 +1666,9 @@ export default function ProjectMemoryTab({
                         key={fp}
                         type="button"
                         onClick={() => handleSelectFileOrDir(fp)}
-                        className="text-left font-mono text-[11px] px-2 py-1 rounded hover:bg-blue-100 dark:hover:bg-[#21262d] text-neutral-800 dark:text-[#c9d1d9] truncate flex items-center gap-1.5"
+                        className="text-left font-mono text-[11px] px-2 py-1 rounded-md hover:bg-violet-100 dark:hover:bg-[#1f2a3f] text-slate-800 dark:text-slate-200 truncate flex items-center gap-1.5 transition-colors"
                       >
-                        <FileCode className="w-3 h-3 text-blue-500 shrink-0" />
+                        <FileCode className="w-3 h-3 text-violet-500 shrink-0" />
                         <span className="truncate">{fp}</span>
                       </button>
                     ))}
@@ -1440,7 +1688,7 @@ export default function ProjectMemoryTab({
                   />
                 ))
               ) : (
-                <div className="py-12 text-center text-xs text-neutral-400">
+                <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500">
                   No repository files matching "{graphSearch}".
                 </div>
               )}
@@ -1449,11 +1697,11 @@ export default function ProjectMemoryTab({
         </div>
 
         {/* RIGHT PANEL: Selected Entity / Relationship Inspector */}
-        <div className="lg:col-span-5 rounded-lg border border-neutral-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] p-4 space-y-4">
-          <div className="flex items-center justify-between pb-2.5 border-b border-neutral-200 dark:border-[#30363d]">
+        <div className="lg:col-span-5 rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#101624] p-4 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-[#1f2a3f]">
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-600 dark:text-[#58a6ff]" />
-              <h3 className="text-xs sm:text-sm font-semibold text-neutral-900 dark:text-[#f0f6fc]">
+              <Layers className="w-4 h-4 text-violet-600 dark:text-cyan-400" />
+              <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {activeEdge ? 'Selected Relationship Inspector' : 'Selected Entity Inspector'}
               </h3>
             </div>
@@ -1461,7 +1709,7 @@ export default function ProjectMemoryTab({
               <button
                 type="button"
                 onClick={() => setSelectedEdgeId(null)}
-                className="text-[11px] text-blue-600 dark:text-[#58a6ff] hover:underline"
+                className="text-[11px] text-violet-600 dark:text-cyan-400 hover:underline"
               >
                 Back to Node
               </button>
@@ -1471,29 +1719,29 @@ export default function ProjectMemoryTab({
           {activeEdge ? (
             /* Edge Inspector View */
             <div className="space-y-3 text-xs">
-              <div className="p-3 rounded bg-neutral-50 dark:bg-[#0d1117] border border-neutral-200 dark:border-[#30363d] space-y-2">
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-[#58a6ff] border border-blue-200 dark:border-blue-800 inline-block">
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-[#1f2a3f] space-y-2">
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 inline-block font-semibold">
                   {activeEdge.type}
                 </span>
-                <div className="text-xs font-mono text-neutral-800 dark:text-[#f0f6fc] flex items-center gap-1.5 flex-wrap pt-1">
+                <div className="text-xs font-mono text-slate-800 dark:text-slate-200 flex items-center gap-1.5 flex-wrap pt-1">
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedEdgeId(null);
                       setSelectedNodeId(activeEdge.sourceNode.id);
                     }}
-                    className="px-2 py-0.5 rounded bg-neutral-200/70 dark:bg-[#21262d] hover:underline"
+                    className="px-2 py-0.5 rounded bg-slate-200/70 dark:bg-[#151c2c] hover:underline"
                   >
                     {activeEdge.sourceNode.title}
                   </button>
-                  <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedEdgeId(null);
                       setSelectedNodeId(activeEdge.targetNode.id);
                     }}
-                    className="px-2 py-0.5 rounded bg-neutral-200/70 dark:bg-[#21262d] hover:underline"
+                    className="px-2 py-0.5 rounded bg-slate-200/70 dark:bg-[#151c2c] hover:underline"
                   >
                     {activeEdge.targetNode.title}
                   </button>
@@ -1510,16 +1758,16 @@ export default function ProjectMemoryTab({
 
               {activeEdge.details && Object.keys(activeEdge.details).length > 0 && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono uppercase text-neutral-400 dark:text-[#6e7681] block">
+                  <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 block font-semibold">
                     Relationship Evidence & Provenance
                   </span>
-                  <div className="rounded border border-neutral-200 dark:border-[#30363d] divide-y divide-neutral-100 dark:divide-[#21262d]">
+                  <div className="rounded-lg border border-slate-200 dark:border-[#1f2a3f] divide-y divide-slate-100 dark:divide-[#151c2c] overflow-hidden">
                     {Object.entries(activeEdge.details)
                       .filter(([, val]) => Boolean(val))
                       .map(([k, val]) => (
                         <div key={k} className="px-3 py-1.5 flex items-start justify-between gap-2 text-[11px]">
-                          <span className="font-mono text-neutral-500 dark:text-[#8b949e]">{k}</span>
-                          <span className="font-mono text-neutral-900 dark:text-[#f0f6fc] text-right break-all">
+                          <span className="font-mono text-slate-500 dark:text-slate-400">{k}</span>
+                          <span className="font-mono text-slate-900 dark:text-slate-100 text-right break-all">
                             {String(val)}
                           </span>
                         </div>
@@ -1532,7 +1780,7 @@ export default function ProjectMemoryTab({
             /* Node Inspector View */
             <div className="space-y-4 text-xs">
               {/* Entity Title & Provenance */}
-              <div className="p-3 rounded-lg bg-neutral-50 dark:bg-[#0d1117] border border-neutral-200 dark:border-[#30363d] space-y-2">
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#0b0f17] border border-slate-200 dark:border-[#1f2a3f] space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span
                     className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded border ${
@@ -1549,11 +1797,11 @@ export default function ProjectMemoryTab({
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-bold font-mono text-neutral-900 dark:text-[#f0f6fc] break-all">
+                  <h4 className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100 break-all">
                     {activeNode.title}
                   </h4>
                   {activeNode.subtitle && (
-                    <p className="text-[11px] text-neutral-500 dark:text-[#8b949e] mt-0.5">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       {activeNode.subtitle}
                     </p>
                   )}
@@ -1564,10 +1812,36 @@ export default function ProjectMemoryTab({
                   <button
                     type="button"
                     onClick={() => handleInvestigateEntity(activeNode)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white transition-colors shadow-2xs"
                   >
                     <MessageSquare className="w-3 h-3" />
                     <span>Investigate in Ask Codebase</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNeighborhoodFocusNodeId(prev => (prev === activeNode.id ? null : activeNode.id))
+                    }
+                    className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium rounded-lg border transition-colors ${
+                      neighborhoodFocusNodeId === activeNode.id
+                        ? 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300'
+                        : 'border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200'
+                    }`}
+                    title="Isolate this entity and its 1-hop connected neighbors"
+                  >
+                    <Crosshair className="w-3 h-3 text-cyan-500" />
+                    <span>{neighborhoodFocusNodeId === activeNode.id ? 'Exit 1-Hop Focus' : 'Focus 1-Hop'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCenterOnNode(activeNode.id)}
+                    className="inline-flex items-center gap-1 px-2 py-1.5 text-[11px] font-medium rounded-lg border border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200"
+                    title="Center graph view on this node"
+                  >
+                    <Eye className="w-3 h-3 text-slate-400" />
+                    <span>Center</span>
                   </button>
 
                   {((activeNode.label || activeNode.type) === 'Component' ||
@@ -1575,22 +1849,22 @@ export default function ProjectMemoryTab({
                     <button
                       type="button"
                       onClick={() => handleOpenRecordForEntity('bug_fix', activeNode)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium rounded border border-neutral-300 dark:border-[#30363d] bg-white dark:bg-[#161b22] hover:bg-neutral-100 dark:hover:bg-[#21262d] text-neutral-700 dark:text-[#c9d1d9]"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium rounded-lg border border-slate-300 dark:border-[#222e44] bg-white dark:bg-[#151c2c] hover:bg-slate-100 dark:hover:bg-[#1f2a3f] text-slate-700 dark:text-slate-200"
                     >
                       <PlusCircle className="w-3 h-3 text-amber-500" />
-                      <span>Record Bug / Decision Here</span>
+                      <span>Record Memory</span>
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Entity Attributes Table (Only real fields supported by data) */}
+              {/* Entity Attributes Table (Only real fields supported by retrieved graph data) */}
               {activeNode.details && Object.keys(activeNode.details).length > 0 && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 dark:text-[#6e7681] block">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">
                     Verified Entity Attributes
                   </span>
-                  <div className="rounded border border-neutral-200 dark:border-[#30363d] divide-y divide-neutral-100 dark:divide-[#21262d]">
+                  <div className="rounded-lg border border-slate-200 dark:border-[#1f2a3f] divide-y divide-slate-100 dark:divide-[#151c2c] overflow-hidden">
                     {Object.entries(activeNode.details)
                       .filter(([, val]) => val !== undefined && val !== null && val !== '')
                       .map(([key, val]) => (
@@ -1598,10 +1872,10 @@ export default function ProjectMemoryTab({
                           key={key}
                           className="px-3 py-1.5 flex items-start justify-between gap-3 text-[11px]"
                         >
-                          <span className="font-mono text-neutral-500 dark:text-[#8b949e] shrink-0">
+                          <span className="font-mono text-slate-500 dark:text-slate-400 shrink-0">
                             {key}
                           </span>
-                          <span className="font-mono text-neutral-900 dark:text-[#f0f6fc] text-right break-all">
+                          <span className="font-mono text-slate-900 dark:text-slate-100 text-right break-all">
                             {String(val)}
                           </span>
                         </div>
@@ -1613,14 +1887,14 @@ export default function ProjectMemoryTab({
               {/* Repository-Specific Tech Stack & Counts when Repository root is selected */}
               {(activeNode.label || activeNode.type) === 'Repository' && (
                 <div className="space-y-2">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 dark:text-[#6e7681] block">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">
                     Detected Technologies & Graph Summary
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {(analysisData?.techStack?.languages || []).map(l => (
                       <span
                         key={l.name}
-                        className="text-[11px] font-mono px-2 py-0.5 rounded bg-neutral-100 dark:bg-[#21262d] text-neutral-800 dark:text-[#c9d1d9] border border-neutral-200 dark:border-[#30363d]"
+                        className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#151c2c] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-[#1f2a3f]"
                       >
                         {l.name} ({l.percentage}%)
                       </span>
@@ -1628,7 +1902,7 @@ export default function ProjectMemoryTab({
                     {(analysisData?.frameworks || []).map(f => (
                       <span
                         key={f.name}
-                        className="text-[11px] px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-[#58a6ff] border border-blue-200 dark:border-blue-900/50"
+                        className="text-[11px] px-2 py-0.5 rounded-md bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/60"
                       >
                         {f.name}
                       </span>
@@ -1640,7 +1914,7 @@ export default function ProjectMemoryTab({
               {/* Related Symbols, Bugs & Decisions for Component or File */}
               {relatedEntityData.symbols.length > 0 && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-purple-600 dark:text-purple-400 block">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-purple-600 dark:text-purple-400 block font-semibold">
                     Defined Symbols ({relatedEntityData.symbols.length})
                   </span>
                   <div className="flex flex-wrap gap-1.5">
@@ -1653,7 +1927,7 @@ export default function ProjectMemoryTab({
                           setSelectedEdgeId(null);
                           setSelectedNodeId(sym.id);
                         }}
-                        className="font-mono text-[10px] px-2 py-1 rounded bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:underline"
+                        className="font-mono text-[10px] px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:underline"
                       >
                         {sym.name}() L{sym.startLine}-{sym.endLine}
                       </button>
@@ -1664,20 +1938,20 @@ export default function ProjectMemoryTab({
 
               {(relatedEntityData.bugs.length > 0 || relatedEntityData.decisions.length > 0) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 block font-semibold">
                     Linked Project Memories ({relatedEntityData.bugs.length + relatedEntityData.decisions.length})
                   </span>
                   <div className="space-y-1.5">
                     {relatedEntityData.bugs.map(b => (
                       <div
                         key={b.bugId}
-                        className="p-2 rounded bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-[11px]"
+                        className="p-2 rounded-lg bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-[11px]"
                       >
                         <span className="font-semibold text-red-700 dark:text-red-300">
                           Bug: {b.title}
                         </span>
                         {b.fixSummary && (
-                          <p className="text-emerald-700 dark:text-[#3fb950] mt-0.5">
+                          <p className="text-emerald-700 dark:text-emerald-400 mt-0.5">
                             Fix: {b.fixSummary}
                           </p>
                         )}
@@ -1686,12 +1960,12 @@ export default function ProjectMemoryTab({
                     {relatedEntityData.decisions.map(d => (
                       <div
                         key={d.id || d.title}
-                        className="p-2 rounded bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-[11px]"
+                        className="p-2 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-[11px]"
                       >
                         <span className="font-semibold text-amber-700 dark:text-amber-300">
                           Decision: {d.title}
                         </span>
-                        <p className="text-neutral-600 dark:text-[#8b949e] mt-0.5">{d.rationale}</p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-0.5">{d.rationale}</p>
                       </div>
                     ))}
                   </div>
@@ -1700,7 +1974,7 @@ export default function ProjectMemoryTab({
 
               {/* Connected Graph Neighbors (1-hop traversal without reload) */}
               <div className="space-y-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 dark:text-[#6e7681] block">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block font-semibold">
                   Connected Graph Relationships ({incidentEdges.length})
                 </span>
                 {incidentEdges.length > 0 ? (
@@ -1719,18 +1993,18 @@ export default function ProjectMemoryTab({
                             setSelectedEdgeId(null);
                             setSelectedNodeId(other.id);
                           }}
-                          className="w-full text-left px-2.5 py-1.5 rounded border border-neutral-200 dark:border-[#30363d] hover:border-blue-400 dark:hover:border-blue-700 bg-neutral-50/70 dark:bg-[#0d1117] flex items-center justify-between gap-2 transition-colors"
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-[#1f2a3f] hover:border-violet-400 dark:hover:border-violet-700 bg-slate-50/70 dark:bg-[#0b0f17] flex items-center justify-between gap-2 transition-colors"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <span
                               className="w-2 h-2 rounded-full shrink-0"
                               style={{ backgroundColor: style.dot }}
                             />
-                            <span className="font-mono text-[11px] text-neutral-900 dark:text-[#f0f6fc] truncate">
+                            <span className="font-mono text-[11px] text-slate-900 dark:text-slate-100 truncate">
                               {other.title}
                             </span>
                           </div>
-                          <span className="text-[9.5px] font-mono text-neutral-500 dark:text-[#8b949e] shrink-0">
+                          <span className="text-[9.5px] font-mono text-slate-500 dark:text-slate-400 shrink-0">
                             {edge.direction === 'outbound' ? `→ ${edge.type}` : `← ${edge.type}`}
                           </span>
                         </button>
@@ -1738,14 +2012,14 @@ export default function ProjectMemoryTab({
                     })}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-neutral-400 dark:text-[#6e7681] italic">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
                     No direct {providerName} edges connected to this entity in the current subgraph.
                   </p>
                 )}
               </div>
             </div>
           ) : (
-            <div className="py-12 text-center text-xs text-neutral-400 dark:text-[#6e7681]">
+            <div className="py-12 text-center text-xs text-slate-400 dark:text-slate-500">
               Select any node or relationship in the {providerName} Graph Explorer to inspect its provenance and details.
             </div>
           )}
@@ -1753,11 +2027,11 @@ export default function ProjectMemoryTab({
       </div>
 
       {/* 3. Stored Project Memory Ledger (Quick Filterable Cards below the Split-Screen Workspace) */}
-      <div className="rounded-lg border border-neutral-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] p-4 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-neutral-200 dark:border-[#30363d]">
+      <div className="rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#101624] p-4 space-y-3 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-[#1f2a3f]">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-neutral-500 dark:text-[#8b949e]" />
-            <h3 className="text-xs sm:text-sm font-semibold text-neutral-900 dark:text-[#f0f6fc]">
+            <FileText className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
               Stored Project Memory Records
             </h3>
           </div>
@@ -1773,10 +2047,10 @@ export default function ProjectMemoryTab({
                 key={tab.id}
                 type="button"
                 onClick={() => setCardFilter(tab.id)}
-                className={`px-2.5 py-1 text-[11px] rounded border transition-colors ${
+                className={`px-2.5 py-1 text-[11px] rounded-lg border transition-colors ${
                   cardFilter === tab.id
-                    ? 'bg-neutral-900 dark:bg-[#21262d] text-white dark:text-[#f0f6fc] border-neutral-900 dark:border-[#30363d]'
-                    : 'bg-neutral-50 dark:bg-[#0d1117] text-neutral-600 dark:text-[#8b949e] border-neutral-200 dark:border-[#30363d]'
+                    ? 'bg-slate-900 dark:bg-[#151c2c] text-white dark:text-slate-100 border-slate-900 dark:border-[#1f2a3f] font-semibold'
+                    : 'bg-slate-50 dark:bg-[#0b0f17] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-[#1f2a3f] hover:text-slate-900 dark:hover:text-slate-200'
                 }`}
               >
                 {tab.label}
@@ -1796,7 +2070,7 @@ export default function ProjectMemoryTab({
                   setCustomEntity(null);
                   setSelectedNodeId(b.bugId);
                 }}
-                className="p-3 rounded border border-red-200/80 dark:border-red-900/40 bg-red-50/30 dark:bg-red-950/10 hover:border-red-400 cursor-pointer space-y-1.5 text-xs transition-colors"
+                className="p-3 rounded-xl border border-red-200/80 dark:border-red-900/40 bg-red-50/30 dark:bg-red-950/10 hover:border-red-400 cursor-pointer space-y-1.5 text-xs transition-colors shadow-2xs"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1 font-mono text-[10px] text-red-700 dark:text-red-400 font-semibold uppercase">
@@ -1804,17 +2078,17 @@ export default function ProjectMemoryTab({
                     <span>Bug · {b.severity || 'high'}</span>
                   </span>
                   {b.commitSha && (
-                    <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-neutral-100 dark:bg-[#21262d] text-neutral-600 dark:text-[#8b949e]">
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#151c2c] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1f2a3f]">
                       {b.commitSha.slice(0, 7)}
                     </span>
                   )}
                 </div>
-                <p className="font-semibold text-neutral-900 dark:text-[#f0f6fc]">{b.title}</p>
-                <p className="text-[11px] text-neutral-600 dark:text-[#8b949e] line-clamp-2">
+                <p className="font-semibold text-slate-900 dark:text-slate-100">{b.title}</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">
                   {b.description}
                 </p>
                 {b.fixSummary && (
-                  <p className="text-[11px] text-emerald-700 dark:text-[#3fb950] font-medium pt-1 border-t border-red-100 dark:border-red-900/30">
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium pt-1 border-t border-red-100 dark:border-red-900/30">
                     Fix: {b.fixSummary}
                   </p>
                 )}
@@ -1831,18 +2105,18 @@ export default function ProjectMemoryTab({
                   setCustomEntity(null);
                   setSelectedNodeId(d.id);
                 }}
-                className="p-3 rounded border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10 hover:border-amber-400 cursor-pointer space-y-1.5 text-xs transition-colors"
+                className="p-3 rounded-xl border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10 hover:border-amber-400 cursor-pointer space-y-1.5 text-xs transition-colors shadow-2xs"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-[10px] text-amber-700 dark:text-amber-400 font-semibold uppercase">
                     Technical Decision
                   </span>
-                  <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-neutral-100 dark:bg-[#21262d] text-neutral-600 dark:text-[#8b949e]">
+                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#151c2c] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1f2a3f]">
                     {d.componentPath || 'root'}
                   </span>
                 </div>
-                <p className="font-semibold text-neutral-900 dark:text-[#f0f6fc]">{d.title}</p>
-                <p className="text-[11px] text-neutral-600 dark:text-[#8b949e] line-clamp-2">
+                <p className="font-semibold text-slate-900 dark:text-slate-100">{d.title}</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">
                   {d.rationale}
                 </p>
               </div>
@@ -1852,16 +2126,16 @@ export default function ProjectMemoryTab({
             (memoryOverview?.componentDependencies || []).slice(0, 6).map((dep, idx) => (
               <div
                 key={`${dep.sourceComponent}-${dep.targetComponent}-${idx}`}
-                className="p-3 rounded border border-neutral-200 dark:border-[#30363d] bg-neutral-50/60 dark:bg-[#0d1117] space-y-1 text-xs"
+                className="p-3 rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-slate-50/60 dark:bg-[#0b0f17] space-y-1 text-xs shadow-2xs"
               >
                 <span className="font-mono text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold uppercase block">
                   Component Dependency
                 </span>
-                <p className="font-mono font-semibold text-neutral-900 dark:text-[#f0f6fc]">
+                <p className="font-mono font-semibold text-slate-900 dark:text-slate-100">
                   {dep.sourceComponent} → {dep.targetComponent}
                 </p>
                 {dep.evidenceFile && (
-                  <p className="font-mono text-[10px] text-neutral-500 dark:text-[#8b949e] truncate">
+                  <p className="font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate">
                     Import in: {dep.evidenceFile}
                   </p>
                 )}
@@ -1871,7 +2145,7 @@ export default function ProjectMemoryTab({
           {!(memoryOverview?.bugsAndFixes?.length) &&
             !(memoryOverview?.decisions?.length) &&
             !(memoryOverview?.componentDependencies?.length) && (
-              <div className="col-span-full py-6 text-center text-xs text-neutral-400 dark:text-[#6e7681]">
+              <div className="col-span-full py-6 text-center text-xs text-slate-400 dark:text-slate-500">
                 No recorded decisions or bug fixes stored for this repository yet. Click <strong>Record Decision / Bug & Fix</strong> above to add project memory.
               </div>
             )}

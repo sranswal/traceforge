@@ -65,16 +65,16 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
           />
         </div>
 
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-950/50 border border-violet-800/40 text-violet-300 text-xs font-mono">
-          <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800/40 text-violet-700 dark:text-violet-300 text-xs font-mono">
+          <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
           <span>Graph-Native Incident Investigation Engine</span>
         </div>
 
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-100">
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
           TraceForge
         </h1>
 
-        <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
           Trace code paths, refactor commits, and historical failure memories in FalkorDB to isolate the root cause of production regressions.
         </p>
       </div>
@@ -82,28 +82,28 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
       {/* Two-Column Gateway: Connect Custom Repo vs Explore Sample Incident */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column (7 cols): Connect Repository */}
-        <div className="lg:col-span-7 rounded-xl border border-[#1f2a3f] bg-[#101624] p-6 flex flex-col justify-between shadow-xl">
+        <div className="lg:col-span-7 rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-white dark:bg-[#101624] p-6 flex flex-col justify-between shadow-md dark:shadow-xl transition-colors">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-violet-400" />
-                <h2 className="text-base font-semibold text-slate-100">
+                <GitBranch className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
                   Connect Repository
                 </h2>
               </div>
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                 GitHub / Git URL
               </span>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               Index AST symbols, call hierarchies, and commit history into FalkorDB to enable graph-grounded incident analysis.
             </p>
 
             {/* Input Box */}
-            <div className="rounded-lg border border-[#26354f] bg-[#0c101a] p-1.5 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500 transition-all">
+            <div className="rounded-lg border border-slate-300 dark:border-[#26354f] bg-slate-50 dark:bg-[#0c101a] p-1.5 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500 transition-all">
               <form onSubmit={handleSubmit} className="flex items-center gap-2">
-                <div className="pl-2 text-slate-400">
+                <div className="pl-2 text-slate-400 dark:text-slate-500">
                   <Search className="w-4 h-4" />
                 </div>
 
@@ -113,7 +113,7 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="Paste GitHub URL (e.g. https://github.com/spf13/cobra)"
                   disabled={isLoading || isLaunchingSample}
-                  className="flex-1 bg-transparent px-2 py-1.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none disabled:opacity-50 font-mono"
+                  className="flex-1 bg-transparent px-2 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none disabled:opacity-50 font-mono"
                 />
 
                 <button
@@ -138,8 +138,8 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
 
             {/* Error Alert */}
             {error && (
-              <div className="p-3 rounded-lg bg-rose-950/30 border border-rose-800/40 text-xs text-rose-300 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500 dark:text-rose-400" />
                 <div>
                   <span className="font-semibold">Connection Failed: </span>
                   <span>{error}</span>
@@ -149,7 +149,7 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
 
             {/* Quick Reference Presets */}
             <div className="space-y-2 pt-2">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 block">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
                 Reference Repositories:
               </span>
               <div className="flex flex-wrap items-center gap-2">
@@ -159,12 +159,12 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
                     type="button"
                     onClick={() => handleSelectPreset(preset.label)}
                     disabled={isLoading || isLaunchingSample}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-[#23314b] bg-[#141c2e] hover:bg-[#1a253c] text-xs transition-colors disabled:opacity-50 cursor-pointer"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-slate-200 dark:border-[#23314b] bg-slate-100 hover:bg-slate-200/80 dark:bg-[#141c2e] dark:hover:bg-[#1a253c] text-xs transition-colors disabled:opacity-50 cursor-pointer"
                   >
-                    <span className="font-mono text-slate-200 font-medium text-[11px]">
+                    <span className="font-mono text-slate-800 dark:text-slate-200 font-medium text-[11px]">
                       {preset.label}
                     </span>
-                    <span className="text-[10px] text-slate-400 px-1 py-0.2 rounded bg-[#0d1320] border border-[#1e2a40]">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 px-1 py-0.2 rounded bg-white dark:bg-[#0d1320] border border-slate-200 dark:border-[#1e2a40]">
                       {preset.tag}
                     </span>
                   </button>
@@ -173,9 +173,9 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
             </div>
           </div>
 
-          <div className="pt-6 border-t border-[#1c263b] mt-6 flex items-center justify-between text-xs text-slate-400">
+          <div className="pt-6 border-t border-slate-200 dark:border-[#1c263b] mt-6 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span>FalkorDB Ingestion Engine Active</span>
             </span>
             <span className="font-mono text-[11px] text-slate-400">v1.0.0</span>
@@ -183,50 +183,50 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
         </div>
 
         {/* Right Column (5 cols): Featured Sample Incident */}
-        <div className="lg:col-span-5 rounded-xl border border-violet-800/50 bg-gradient-to-b from-[#151329] via-[#101424] to-[#0d111d] p-6 flex flex-col justify-between shadow-xl relative overflow-hidden">
+        <div className="lg:col-span-5 rounded-xl border border-violet-200 dark:border-violet-800/50 bg-gradient-to-b from-violet-50/70 via-white to-slate-50 dark:from-[#151329] dark:via-[#101424] dark:to-[#0d111d] p-6 flex flex-col justify-between shadow-md dark:shadow-xl relative overflow-hidden transition-colors">
           {/* Subtle Accent Glow */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-violet-600/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="space-y-4 relative z-10">
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-950/60 text-amber-300 border border-amber-800/40 text-[11px] font-mono font-medium">
-                <Flame className="w-3 h-3 text-amber-400" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/40 text-[11px] font-mono font-medium">
+                <Flame className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                 Live Demo Fixture
               </span>
-              <span className="text-[11px] font-mono text-violet-300 font-semibold">
+              <span className="text-[11px] font-mono text-violet-700 dark:text-violet-300 font-semibold">
                 One-Click Launch
               </span>
             </div>
 
             <div>
-              <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                 <span>Explore Sample Incident</span>
               </h2>
-              <div className="font-mono text-xs text-violet-300 mt-0.5">
+              <div className="font-mono text-xs text-violet-700 dark:text-violet-300 mt-0.5">
                 acme/payment-gateway
               </div>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               Evaluate TraceForge immediately on the canonical high-concurrency regression:
             </p>
 
-            <ul className="space-y-2 text-xs text-slate-300">
+            <ul className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5" />
-                <span><strong className="text-slate-100">Entrypoint:</strong> <code>handlePaymentRequest</code> in <code>pay.js</code></span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-900 dark:text-slate-100">Entrypoint:</strong> <code>handlePaymentRequest</code> in <code>pay.js</code></span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                <span><strong className="text-slate-100">Decoy Trap:</strong> <code>checkRateLimit</code> (keyword decoy)</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-900 dark:text-slate-100">Decoy Trap:</strong> <code>checkRateLimit</code> (keyword decoy)</span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-violet-400 shrink-0 mt-0.5" />
-                <span><strong className="text-slate-100">Root Cause:</strong> <code>acquireTokenLock</code> in <code>tokenBucket.js</code></span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-900 dark:text-slate-100">Root Cause:</strong> <code>acquireTokenLock</code> in <code>tokenBucket.js</code></span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                <span><strong className="text-slate-100">FalkorDB Memory:</strong> Historical lock starvation bug & fix recall</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong className="text-slate-900 dark:text-slate-100">FalkorDB Memory:</strong> Historical lock starvation bug & fix recall</span>
               </li>
             </ul>
           </div>
@@ -236,7 +236,7 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
               type="button"
               onClick={handleLaunchSample}
               disabled={isLoading || isLaunchingSample}
-              className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-950/50 transition-all cursor-pointer disabled:opacity-50"
+              className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-950/20 dark:shadow-violet-950/50 transition-all cursor-pointer disabled:opacity-50"
             >
               {isLaunchingSample ? (
                 <>
@@ -251,7 +251,7 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
                 </>
               )}
             </button>
-            <p className="text-[11px] text-center text-slate-400 mt-2">
+            <p className="text-[11px] text-center text-slate-500 dark:text-slate-400 mt-2">
               Instant evaluation · No GitHub token required
             </p>
           </div>

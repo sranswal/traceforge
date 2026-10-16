@@ -356,19 +356,19 @@ export default function CausalGraphCanvas({
   const activeSelectedNode = selectedNodeId ? nodeMap.get(selectedNodeId) : (!activeSelectedEdge ? nodeMap.get('node-root-cause') : null);
 
   return (
-    <div className={`relative flex flex-col rounded-xl border border-[#1f2a3f] bg-[#0c101a] overflow-hidden select-none ${className}`}>
+    <div className={`relative flex flex-col rounded-xl border border-slate-200 dark:border-[#1f2a3f] bg-slate-50 dark:bg-[#0c101a] overflow-hidden select-none transition-colors ${className}`}>
       {/* Canvas Top Bar: Status, Scope & Controls */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1b2537] bg-[#0f1422] z-10">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 dark:border-[#1b2537] bg-white dark:bg-[#0f1422] z-10 transition-colors">
         <div className="flex items-center gap-2 flex-wrap">
-          <Layers className="w-4 h-4 text-violet-400" />
-          <span className="text-xs font-semibold text-slate-200">
+          <Layers className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+          <span className="text-xs font-semibold text-slate-900 dark:text-slate-200">
             FalkorDB Causal Dependency Chain
           </span>
-          <span className="text-[11px] font-mono text-slate-400 px-2 py-0.5 rounded bg-[#161f30] border border-[#232f46]">
+          <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded bg-slate-100 dark:bg-[#161f30] border border-slate-200 dark:border-[#232f46]">
             {nodes.length} nodes · {isAblated ? '1 call hop (1 ablated)' : '2 call hops'}
           </span>
           {isAblated && (
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/60 font-bold animate-pulse">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800/60 font-bold animate-pulse">
               [Controlled Experiment: Ablated Edge]
             </span>
           )}
@@ -379,7 +379,7 @@ export default function CausalGraphCanvas({
           <button
             type="button"
             onClick={() => setZoom(prev => Math.min(prev + 0.15, 2.5))}
-            className="p-1 rounded hover:bg-[#1a2336] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-[#1a2336] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors cursor-pointer"
             title="Zoom In"
             aria-label="Zoom In"
           >
@@ -388,7 +388,7 @@ export default function CausalGraphCanvas({
           <button
             type="button"
             onClick={() => setZoom(prev => Math.max(prev - 0.15, 0.5))}
-            className="p-1 rounded hover:bg-[#1a2336] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-[#1a2336] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors cursor-pointer"
             title="Zoom Out"
             aria-label="Zoom Out"
           >
@@ -397,7 +397,7 @@ export default function CausalGraphCanvas({
           <button
             type="button"
             onClick={handleReset}
-            className="p-1 rounded hover:bg-[#1a2336] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer text-[11px] font-mono flex items-center gap-1 px-1.5"
+            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-[#1a2336] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors cursor-pointer text-[11px] font-mono flex items-center gap-1 px-1.5"
             title="Reset View"
           >
             <RotateCcw className="w-3 h-3" />
@@ -498,7 +498,7 @@ export default function CausalGraphCanvas({
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
             {/* Background Grid Pattern */}
             <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-              <circle cx="2" cy="2" r="1" fill="#1b2436" />
+              <circle cx="2" cy="2" r="1" className="fill-slate-300 dark:fill-[#1b2436]" />
             </pattern>
             <rect x="-1000" y="-1000" width="3000" height="3000" fill="url(#grid)" opacity="0.6" />
 
@@ -597,8 +597,8 @@ export default function CausalGraphCanvas({
                       width={edge.isAblated ? 150 : 110}
                       height="18"
                       rx="4"
-                      fill="#0d121f"
-                      stroke={isSelected ? '#a78bfa' : isHovered ? '#64748b' : '#222e45'}
+                      className="fill-white dark:fill-[#0d121f] stroke-slate-300 dark:stroke-[#222e45]"
+                      stroke={isSelected ? '#a78bfa' : isHovered ? '#64748b' : undefined}
                       strokeWidth={isSelected ? 1.5 : 1}
                     />
                     <text
@@ -705,7 +705,7 @@ export default function CausalGraphCanvas({
                   <text
                     y={node.radius + 15}
                     textAnchor="middle"
-                    fill={node.type === 'decoy' ? '#94a3b8' : '#f1f5f9'}
+                    className={node.type === 'decoy' ? 'fill-slate-500 dark:fill-slate-400' : 'fill-slate-900 dark:fill-slate-100'}
                     fontSize="11"
                     fontWeight="700"
                     fontFamily="Inter, sans-serif"
@@ -717,7 +717,7 @@ export default function CausalGraphCanvas({
                   <text
                     y={node.radius + 28}
                     textAnchor="middle"
-                    fill="#64748b"
+                    className="fill-slate-500 dark:fill-slate-400"
                     fontSize="9.5"
                     fontFamily="JetBrains Mono, monospace"
                   >
@@ -732,7 +732,7 @@ export default function CausalGraphCanvas({
                       width="84"
                       height="16"
                       rx="3"
-                      fill="#0c111c"
+                      className="fill-white dark:fill-[#0c111c]"
                       stroke={node.borderColor}
                       strokeWidth="1"
                       strokeOpacity="0.75"
@@ -755,12 +755,12 @@ export default function CausalGraphCanvas({
         </svg>
 
         {/* Visual Graph Legend */}
-        <div className="absolute bottom-3 left-3 bg-[#0d1320]/95 backdrop-blur border border-[#1f2c42] rounded-lg px-3 py-2 text-[10px] space-y-1 z-10 shadow-lg">
-          <div className="font-semibold text-slate-300 uppercase tracking-wider text-[9px] mb-1 flex items-center justify-between gap-3">
+        <div className="absolute bottom-3 left-3 bg-white/95 dark:bg-[#0d1320]/95 backdrop-blur border border-slate-200 dark:border-[#1f2c42] rounded-lg px-3 py-2 text-[10px] space-y-1 z-10 shadow-lg transition-colors">
+          <div className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[9px] mb-1 flex items-center justify-between gap-3">
             <span>Graph Legend & Taxonomy</span>
-            <span className="text-[9px] font-mono text-slate-400">Click node/edge to inspect</span>
+            <span className="text-[9px] font-mono text-slate-500 dark:text-slate-400">Click node/edge to inspect</span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-400 font-mono">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-600 dark:text-slate-400 font-mono">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-violet-500" />
               <span>Source Evidence</span>
@@ -782,7 +782,7 @@ export default function CausalGraphCanvas({
               <span>Historical Precedent</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full border border-dashed border-slate-400 bg-slate-800" />
+              <span className="w-2.5 h-2.5 rounded-full border border-dashed border-slate-400 dark:border-slate-500 bg-slate-200 dark:bg-slate-800" />
               <span>Rejected Decoy</span>
             </span>
           </div>
@@ -792,25 +792,25 @@ export default function CausalGraphCanvas({
       {/* Contextual Evidence Inspector (Node OR Edge) */}
       {activeSelectedEdge ? (
         /* Edge Inspector */
-        <div className="px-4 py-3 bg-[#0e1424] border-t border-[#1b2537] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="px-4 py-3 bg-white dark:bg-[#0e1424] border-t border-slate-200 dark:border-[#1b2537] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-colors">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: activeSelectedEdge.color }}
               />
-              <span className="font-semibold text-slate-100">
-                Edge: <code className="text-violet-300 font-mono">{activeSelectedEdge.label}</code>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                Edge: <code className="text-violet-600 dark:text-violet-300 font-mono">{activeSelectedEdge.label}</code>
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#182136] text-slate-300 border border-[#263450]">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-300 dark:bg-[#182136] dark:text-slate-300 dark:border-[#263450]">
                 {activeSelectedEdge.relationshipType}
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-950/60 text-teal-300 border border-teal-800/40">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/40">
                 Provenance: {activeSelectedEdge.provenance}
               </span>
             </div>
 
-            <p className="text-[11px] text-slate-300 leading-relaxed max-w-2xl">
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
               {activeSelectedEdge.description}
             </p>
           </div>
@@ -822,7 +822,7 @@ export default function CausalGraphCanvas({
                 const srcNode = nodeMap.get(activeSelectedEdge.source);
                 if (srcNode) handleNodeClick(srcNode);
               }}
-              className="px-2.5 py-1 text-[11px] rounded bg-[#162035] hover:bg-[#1e2a44] text-slate-200 border border-[#283750] transition-colors cursor-pointer"
+              className="px-2.5 py-1 text-[11px] rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 dark:bg-[#162035] dark:hover:bg-[#1e2a44] dark:text-slate-200 dark:border-[#283750] transition-colors cursor-pointer"
             >
               Inspect Source
             </button>
@@ -832,7 +832,7 @@ export default function CausalGraphCanvas({
                 const tgtNode = nodeMap.get(activeSelectedEdge.target);
                 if (tgtNode) handleNodeClick(tgtNode);
               }}
-              className="px-2.5 py-1 text-[11px] rounded bg-[#162035] hover:bg-[#1e2a44] text-slate-200 border border-[#283750] transition-colors cursor-pointer"
+              className="px-2.5 py-1 text-[11px] rounded bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 dark:bg-[#162035] dark:hover:bg-[#1e2a44] dark:text-slate-200 dark:border-[#283750] transition-colors cursor-pointer"
             >
               Inspect Target
             </button>
@@ -842,7 +842,7 @@ export default function CausalGraphCanvas({
                 setInternalSelectedEdgeId(null);
                 if (onSelectEdge) onSelectEdge(null);
               }}
-              className="text-[11px] text-slate-400 hover:text-slate-200 cursor-pointer underline ml-1"
+              className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer underline ml-1"
             >
               Clear Edge
             </button>
@@ -850,50 +850,50 @@ export default function CausalGraphCanvas({
         </div>
       ) : activeSelectedNode ? (
         /* Node Inspector */
-        <div className="px-4 py-3 bg-[#0e1424] border-t border-[#1b2537] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="px-4 py-3 bg-white dark:bg-[#0e1424] border-t border-slate-200 dark:border-[#1b2537] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-colors">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: activeSelectedNode.color }}
               />
-              <span className="font-semibold text-slate-100">
-                Node: <code className="text-violet-300 font-mono">{activeSelectedNode.label}</code>
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                Node: <code className="text-violet-600 dark:text-violet-300 font-mono">{activeSelectedNode.label}</code>
               </span>
-              <span className="text-[11px] font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                 ({activeSelectedNode.filePath} {activeSelectedNode.lineRange ? activeSelectedNode.lineRange : ''})
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#182136] text-slate-300 border border-[#263450]">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-300 dark:bg-[#182136] dark:text-slate-300 dark:border-[#263450]">
                 {activeSelectedNode.role}
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-950/60 text-teal-300 border border-teal-800/40">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800/40">
                 Provenance: {activeSelectedNode.provenance}
               </span>
             </div>
 
-            <p className="text-[11px] text-slate-300 leading-relaxed max-w-2xl">
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
               {activeSelectedNode.details}
             </p>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             {activeSelectedNode.type === 'decoy' && (
-              <span className="text-[10px] font-mono px-2 py-1 rounded bg-rose-950/60 text-rose-300 border border-rose-800/40 font-semibold">
+              <span className="text-[10px] font-mono px-2 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/40 font-semibold">
                 Refuted by Call Graph
               </span>
             )}
             {activeSelectedNode.type === 'root_cause' && (
-              <span className="text-[10px] font-mono px-2 py-1 rounded bg-rose-950/60 text-rose-300 border border-rose-800/40 font-semibold">
+              <span className="text-[10px] font-mono px-2 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/40 font-semibold">
                 {isAblated ? 'Ablated from Traversal' : 'Confirmed Root Cause'}
               </span>
             )}
             {activeSelectedNode.type === 'commit' && (
-              <span className="text-[10px] font-mono px-2 py-1 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 font-semibold">
+              <span className="text-[10px] font-mono px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/40 font-semibold">
                 Suspected Introducing Refactor
               </span>
             )}
             {activeSelectedNode.type === 'memory' && (
-              <span className="text-[10px] font-mono px-2 py-1 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 font-semibold">
+              <span className="text-[10px] font-mono px-2 py-1 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/40 font-semibold">
                 Historical Institutional Fix
               </span>
             )}

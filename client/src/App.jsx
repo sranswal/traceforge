@@ -472,7 +472,7 @@ export default function App() {
   const currentActiveRepo = investigationTarget?.targetRepo || analysisData?.repository?.fullName || null;
 
   return (
-    <div className="min-h-screen bg-[#090d14] text-slate-100 flex flex-col font-sans transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#090d14] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
       {/* 1. Global Application Header */}
       <Header
         theme={theme}

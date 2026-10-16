@@ -35,7 +35,7 @@ export default function InvestigationStepIndicator({
   className = ''
 }) {
   return (
-    <div className={`w-full bg-[#111622] border border-[#1f2a3f] rounded-lg p-2.5 sm:p-3 ${className}`}>
+    <div className={`w-full bg-white dark:bg-[#111622] border border-slate-200 dark:border-[#1f2a3f] rounded-lg p-2.5 sm:p-3 shadow-sm dark:shadow-none transition-colors ${className}`}>
       <div className="flex items-center justify-between gap-2 overflow-x-auto">
         {STEPS.map((step, idx) => {
           const Icon = step.icon;
@@ -49,10 +49,10 @@ export default function InvestigationStepIndicator({
                 onClick={() => onSelectStep && onSelectStep(step.id)}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-all text-left shrink-0 cursor-pointer focus:outline-none ${
                   isActive
-                    ? 'bg-violet-950/60 border border-violet-500/60 text-white shadow-sm shadow-violet-950/50'
+                    ? 'bg-violet-50 border border-violet-400/80 text-violet-900 shadow-sm dark:bg-violet-950/60 dark:border-violet-500/60 dark:text-white dark:shadow-violet-950/50'
                     : isCompleted
-                    ? 'bg-emerald-950/20 border border-emerald-800/40 text-emerald-300 hover:bg-emerald-950/40'
-                    : 'bg-[#161f30]/60 border border-[#232f46]/60 text-slate-400 hover:text-slate-200 hover:bg-[#1a253a]'
+                    ? 'bg-emerald-50 border border-emerald-300/80 text-emerald-800 hover:bg-emerald-100/70 dark:bg-emerald-950/20 dark:border-emerald-800/40 dark:text-emerald-300 dark:hover:bg-emerald-950/40'
+                    : 'bg-slate-100/70 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 dark:bg-[#161f30]/60 dark:border-[#232f46]/60 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-[#1a253a]'
                 }`}
                 title={`Jump to ${step.title}: ${step.subtitle}`}
               >
@@ -62,7 +62,7 @@ export default function InvestigationStepIndicator({
                       ? 'bg-violet-600 text-white ring-2 ring-violet-400/40'
                       : isCompleted
                       ? 'bg-emerald-600 text-white'
-                      : 'bg-[#222d42] text-slate-300'
+                      : 'bg-slate-200 text-slate-700 dark:bg-[#222d42] dark:text-slate-300'
                   }`}
                 >
                   {isCompleted && !isActive ? (
@@ -76,22 +76,22 @@ export default function InvestigationStepIndicator({
                   <div
                     className={`text-xs font-semibold leading-tight ${
                       isActive
-                        ? 'text-violet-200'
+                        ? 'text-violet-800 dark:text-violet-200'
                         : isCompleted
-                        ? 'text-emerald-300'
-                        : 'text-slate-300'
+                        ? 'text-emerald-800 dark:text-emerald-300'
+                        : 'text-slate-700 dark:text-slate-300'
                     }`}
                   >
                     {step.title}
                   </div>
-                  <div className="text-[11px] text-slate-400 font-normal leading-tight">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal leading-tight">
                     {step.subtitle}
                   </div>
                 </div>
               </button>
 
               {idx < STEPS.length - 1 && (
-                <div className="hidden md:block flex-1 max-w-8 h-px bg-[#26334d]" />
+                <div className="hidden md:block flex-1 max-w-8 h-px bg-slate-200 dark:bg-[#26334d]" />
               )}
             </React.Fragment>
           );
