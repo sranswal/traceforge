@@ -11,6 +11,11 @@
 [![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
 [![FalkorDB](https://img.shields.io/badge/Graph_Database-FalkorDB-red.svg)](https://www.falkordb.com/)
 [![Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-orange.svg)](https://ai.google.dev/)
+[![Hackathon Track](https://img.shields.io/badge/Hackathon_Track-Agents_That_Act_on_Connected_Data-purple.svg)](https://www.wemakedevs.org/hackathons/falkordb#tracks)
+[![Event](https://img.shields.io/badge/FalkorDB_Graph_Hacks-Oct_15--18%2C_2026-blueviolet.svg)](https://www.wemakedevs.org/hackathons/falkordb)
+
+**Submitted to:** [FalkorDB Graph Hacks (Oct 15–18, 2026)](https://www.wemakedevs.org/hackathons/falkordb) by WeMakeDevs & FalkorDB  
+**Selected Track:** **Track 01 — Agents That Act on Connected Data** *(also eligible for Track 02 — Agent Memory & Coordination)*
 
 ---
 
@@ -91,6 +96,146 @@ TraceForge pairs a high-performance **FalkorDB** graph engine with **Repository 
    └──────────[:BUG_AFFECTS_FILE]──────────► (:File) ──────────────────────────────┘
 ```
 
+### 2.1 Production FalkorDB Cypher Queries
+
+TraceForge relies exclusively on parameterized, bounded openCypher templates with strict `LIMIT` clauses. It never executes unvetted model-generated Cypher.
+
+#### A. Schema Indexing & Uniqueness Constraints (`server/memory/falkordbSchema.js`)
+```cypher
+// Exact-match primary identifier indexes and uniqueness constraints (9 entity types)
+CREATE INDEX FOR (n:Repository) ON (n.id);
+CREATE INDEX FOR (n:File) ON (n.id);
+CREATE INDEX FOR (n:Component) ON (n.id);
+CREATE INDEX FOR (n:Symbol) ON (n.id);
+CREATE INDEX FOR (n:Commit) ON (n.id);
+CREATE INDEX FOR (n:Bug) ON (n.id);
+CREATE INDEX FOR (n:Fix) ON (n.id);
+CREATE INDEX FOR (n:TechnicalDecision) ON (n.id);
+CREATE INDEX FOR (n:Test) ON (n.id);
+
+// Bounded repository-scoped secondary indexes for multi-tenant isolation
+CREATE INDEX FOR (n:File) ON (n.repoFullName);
+CREATE INDEX FOR (n:Component) ON (n.repoFullName);
+CREATE INDEX FOR (n:Symbol) ON (n.repoFullName);
+CREATE INDEX FOR (n:Commit) ON (n.repoFullName);
+CREATE INDEX FOR (n:Bug) ON (n.repoFullName);
+CREATE INDEX FOR (n:Fix) ON (n.repoFullName);
+```
+
+#### B. Multi-Hop Symbol & Call Graph Traversal (`server/memory/falkordbRetrieval.js`)
+```cypher
+MATCH (s:Symbol { repoFullName: $repoFullName })
+WITH s,
+     size([kw IN $keywords WHERE
+       toLower(s.name) CONTAINS kw OR
+       toLower(s.filePath) CONTAINS kw
+     ]) AS score
+OPTIONAL MATCH (s)-[:SYMBOL_CALLS_SYMBOL]->(callee:Symbol)
+OPTIONAL MATCH (caller:Symbol)-[:SYMBOL_CALLS_SYMBOL]->(s)
+OPTIONAL MATCH (t:Test)-[:TEST_COVERS_SYMBOL]->(s)
+OPTIONAL MATCH (cm:Commit)-[:COMMIT_CHANGED_SYMBOL]->(s)
+RETURN s.id AS id,
+       s.name AS name,
+       s.kind AS kind,
+       s.filePath AS filePath,
+       s.startLine AS startLine,
+       s.endLine AS endLine,
+       s.parserPrecision AS parserPrecision,
+       collect(DISTINCT callee.name)[0..6] AS callsSymbols,
+       collect(DISTINCT caller.name)[0..6] AS calledBySymbols,
+       collect(DISTINCT t.name)[0..5] AS coveredByTests,
+       collect(DISTINCT cm.shortSha)[0..5] AS changedInCommits,
+       score
+ORDER BY score DESC, s.filePath ASC, s.startLine ASC
+LIMIT $limit;
+```
+
+#### C. Historical Defect & Verified Fix Retrieval (`server/memory/falkordbRetrieval.js`)
+```cypher
+MATCH (b:Bug { repoFullName: $repoFullName })
+OPTIONAL MATCH (b)-[:BUG_AFFECTS_COMPONENT]->(c:Component)
+OPTIONAL MATCH (b)-[:BUG_AFFECTS_FILE]->(f:File)
+OPTIONAL MATCH (fx:Fix)-[:FIX_RESOLVES_BUG]->(b)
+OPTIONAL MATCH (fx)-[:FIX_APPLIED_IN_COMMIT]->(cm:Commit)
+WITH b, c, f, fx, cm,
+     size([kw IN $keywords WHERE
+       toLower(coalesce(b.title, '')) CONTAINS kw OR
+       toLower(coalesce(b.description, '')) CONTAINS kw OR
+       toLower(coalesce(b.symptoms, '')) CONTAINS kw OR
+       toLower(coalesce(b.filePath, '')) CONTAINS kw OR
+       toLower(coalesce(c.path, '')) CONTAINS kw OR
+       toLower(coalesce(fx.summary, '')) CONTAINS kw OR
+       toLower(coalesce(fx.description, '')) CONTAINS kw
+     ]) AS relevanceScore
+RETURN b.id AS bugId,
+       b.title AS title,
+       b.description AS description,
+       b.severity AS severity,
+       b.status AS status,
+       b.symptoms AS symptoms,
+       coalesce(f.path, b.filePath) AS filePath,
+       coalesce(c.path, b.componentPath) AS componentPath,
+       fx.id AS fixId,
+       fx.summary AS fixSummary,
+       fx.description AS fixDescription,
+       coalesce(cm.sha, fx.commitSha) AS commitSha,
+       cm.shortSha AS commitShortSha,
+       cm.role AS commitRole,
+       cm.message AS commitMessage,
+       b.introducedInCommit AS introducedInCommit,
+       b.isResolution AS isResolution,
+       b.incidentId AS incidentId,
+       relevanceScore
+ORDER BY relevanceScore DESC, b.createdAt DESC
+LIMIT $limit;
+```
+
+#### D. Idempotent Bug & Remediation Ingestion (`server/memory/falkordbRetrieval.js`)
+```cypher
+MATCH (r:Repository { id: $repoId })
+MERGE (b:Bug { id: $bug.id })
+ON CREATE SET b.repoFullName = $repoFullName,
+              b.title = $bug.title,
+              b.description = $bug.description,
+              b.severity = $bug.severity,
+              b.status = $bug.status,
+              b.symptoms = $bug.symptoms,
+              b.filePath = $bug.filePath,
+              b.componentPath = $bug.componentPath,
+              b.createdAt = $now
+MERGE (r)-[:REPOSITORY_HAS_BUG]->(b)
+FOREACH (_ IN CASE WHEN $fix.id IS NOT NULL THEN [1] ELSE [] END |
+  MERGE (fx:Fix { id: $fix.id })
+  ON CREATE SET fx.repoFullName = $repoFullName,
+                fx.summary = $fix.summary,
+                fx.description = $fix.description,
+                fx.commitSha = $fix.commitSha,
+                fx.createdAt = $now
+  MERGE (fx)-[:FIX_RESOLVES_BUG]->(b)
+);
+```
+
+### 2.2 Core Graph Algorithms & Causal Reasoning
+
+1. **Multi-Hop AST Breadth-First Call Traversal ($H \le 2$)**:
+   Beginning at the incident entrypoint (`server/routes/pay.js`), TraceForge traverses forward along `:SYMBOL_CALLS_SYMBOL` edges. For each reachable node $v$, it records the distance hop, caller symbol, line range, and static parser precision.
+
+2. **Mathematical Candidate Scoring Formula**:
+   Candidates in the reachable execution subgraph are ranked objectively:
+   $$\text{Score}(v) = 4 \cdot \mathbb{I}_{\text{commitTouched}}(v) + 3 \cdot \mathbb{I}_{\text{historicalDefect}}(v) + 2 \cdot \mathbb{I}_{\text{downstreamCallee}}(v)$$
+   - $\mathbb{I}_{\text{commitTouched}}$: Symbol's containing file was modified by the suspected regression commit.
+   - $\mathbb{I}_{\text{historicalDefect}}$: Symbol or component correlates with a previously resolved `:Bug` node in FalkorDB.
+   - $\mathbb{I}_{\text{downstreamCallee}}$: Node is a transitive callee rather than the outer HTTP handler.
+
+3. **Decoy Refutation Algorithm**:
+   Lexical keyword search selects candidates based on superficial word frequency (matching *"rate limit"*, *"504"*, *"timeout"* to `services/rateLimiter.js`). TraceForge's graph algorithm verifies whether that candidate is a dead-end or merely where callers wait, identifying the true blocking condition 2 hops away in `services/tokenBucket.js:acquireTokenLock`.
+
+4. **Controlled Read-Only Causal Edge Ablation**:
+   To prove that graph connectivity is causally necessary, TraceForge includes an ablation harness. Severing the causal call edge (`verifyToken` $\to$ `acquireTokenLock`) drops candidate confidence from `HIGH` to `INSUFFICIENT_EVIDENCE`, demonstrating that graph connectivity—not hardcoded heuristics—drives the diagnosis.
+
+5. **Non-Destructive Blast-Radius Recovery Simulation**:
+   Before proposing a rollback or patch, TraceForge traverses upstream `:SYMBOL_CALLS_SYMBOL` and `:COMPONENT_DEPENDS_ON_COMPONENT` edges to compute affected dependents and recommend safe remediation with zero disk mutation.
+
 ---
 
 ## 3. Flagship Workflows & Core Capabilities
@@ -133,10 +278,15 @@ TraceForge provides three target-aware investigation modes, backed by strict **E
 - **Docker**: For running the local FalkorDB instance
 - **Google Gemini API Key**: From [Google AI Studio](https://aistudio.google.com/)
 
-### 1. Launch FalkorDB via Docker
+### 1. Launch FalkorDB (Local Docker or FalkorDB Cloud)
+
+#### Option A: Local Instance via Docker
 ```bash
 docker run -p 6379:6379 -d --name falkordb falkordb/falkordb:latest
 ```
+
+#### Option B: FalkorDB Cloud
+Sign up at [FalkorDB Cloud](https://app.falkordb.cloud/), create a database instance, and copy your connection URL (e.g., `falkors://default:password@your-instance.falkordb.cloud:6379`).
 
 ### 2. Install Dependencies
 ```bash
@@ -151,19 +301,20 @@ cp .env.example .env
 
 Set the following variables in `.env`:
 ```env
-# FalkorDB Configuration (Primary Graph Backend)
+# For Local Docker:
 GRAPH_DATABASE_PROVIDER=falkordb
 FALKORDB_HOST=localhost
 FALKORDB_PORT=6379
 FALKORDB_GRAPH=traceforge
 
-# Gemini AI Key (for architectural reasoning)
+# OR for FalkorDB Cloud / Vercel:
+# FALKORDB_URL=falkors://default:your_password@your-instance.falkordb.cloud:6379
+
+# Google Gemini API Key (for architectural reasoning & failover)
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Optional: Provider tokens for higher API rate limits or private repos
-# GITHUB_TOKEN=your_github_token
-# GITLAB_TOKEN=your_gitlab_token
-# BITBUCKET_TOKEN=your_bitbucket_token
+# Optional: Secondary keys for multi-key failover
+# GEMINI_API_KEY_2=your_secondary_key_here
 ```
 
 ### 4. Run Development Server
