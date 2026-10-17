@@ -11,11 +11,6 @@
 [![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
 [![FalkorDB](https://img.shields.io/badge/Graph_Database-FalkorDB-red.svg)](https://www.falkordb.com/)
 [![Google Gemini](https://img.shields.io/badge/AI-Google_Gemini-orange.svg)](https://ai.google.dev/)
-[![Hackathon Track](https://img.shields.io/badge/Hackathon_Track-Agents_That_Act_on_Connected_Data-purple.svg)](https://www.wemakedevs.org/hackathons/falkordb#tracks)
-[![Event](https://img.shields.io/badge/FalkorDB_Graph_Hacks-Oct_15--18%2C_2026-blueviolet.svg)](https://www.wemakedevs.org/hackathons/falkordb)
-
-**Submitted to:** [FalkorDB Graph Hacks (Oct 15–18, 2026)](https://www.wemakedevs.org/hackathons/falkordb) by WeMakeDevs & FalkorDB  
-**Selected Track:** **Track 01 — Agents That Act on Connected Data** *(also eligible for Track 02 — Agent Memory & Coordination)*
 
 ---
 
