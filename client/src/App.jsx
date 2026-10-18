@@ -234,6 +234,7 @@ export default function App() {
     setQaHistory([]);
     setQaError(null);
     setInvestigationTarget(null);
+    setInvestigationLaunchTarget(null);
     setMemoryOverview(null);
     summaryInFlightRepoRef.current = null;
     autoSummaryAttemptedRepoRef.current = null;
@@ -456,6 +457,16 @@ export default function App() {
   const handleExploreSampleIncident = async () => {
     setIsLoading(true);
     setError(null);
+    setSummary(null);
+    setSummaryMeta(null);
+    setSummaryError(null);
+    setQaHistory([]);
+    setQaError(null);
+    setInvestigationTarget(null);
+    setInvestigationLaunchTarget(null);
+    setMemoryOverview(null);
+    summaryInFlightRepoRef.current = null;
+    autoSummaryAttemptedRepoRef.current = null;
     try {
       await fetch('/api/incident/seed', {
         method: 'POST',

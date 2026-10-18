@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Terminal, AlertTriangle } from 'lucide-react';
+import { Copy, Check, Terminal, AlertTriangle, ExternalLink } from 'lucide-react';
 import { safeDecodeHtmlEntities } from '../../utils/markdownUtils.js';
 
 export { safeDecodeHtmlEntities };
@@ -39,20 +39,21 @@ function CodeBlock({ language, code }) {
           )}
         </button>
       </div>
-      <div className="p-3 overflow-x-auto font-mono text-[11px] leading-relaxed select-text">
+      <div className="p-3 overflow-x-auto font-mono text-[11px] leading-relaxed select-text whitespace-pre-wrap sm:whitespace-pre break-words">
         <pre>{code}</pre>
       </div>
     </div>
   );
 }
 
-function renderInline(rawText) {
+function renderInline(rawText, shouldDecode = false) {
   if (!rawText) return null;
-  const decoded = safeDecodeHtmlEntities(rawText);
-  // Split on inline code (`...`) and bold (**...**)
-  const parts = decoded.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+  const text = shouldDecode ? safeDecodeHtmlEntities(rawText) : rawText;
+  // Split on inline code (`...`), bold (**...**), and markdown links ([text](url))
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g);
 
   return parts.map((part, i) => {
+    if (!part) return null;
     if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
       return (
         <code
@@ -70,18 +71,41 @@ function renderInline(rawText) {
         </strong>
       );
     }
+    if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+      const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (match) {
+        const linkText = match[1];
+        const linkHref = match[2].trim();
+        const isSafeUrl = /^(https?:|mailto:|#|\/)/i.test(linkHref);
+        const isExternal = /^https?:/i.test(linkHref);
+        return (
+          <a
+            key={i}
+            href={isSafeUrl ? linkHref : '#'}
+            target={isExternal ? '_blank' : undefined}
+            rel={isExternal ? 'noopener noreferrer' : undefined}
+            className="text-violet-600 dark:text-cyan-400 hover:underline inline-flex items-center gap-0.5 break-all font-medium"
+          >
+            <span>{linkText}</span>
+            {isExternal && <ExternalLink className="w-2.5 h-2.5 inline shrink-0" />}
+          </a>
+        );
+      }
+    }
     return <span key={i}>{part}</span>;
   });
 }
 
-export default function MarkdownMessageRenderer({ content, className = '' }) {
-  if (!content) return null;
+export default function MarkdownMessageRenderer({ content, className = '', fallbackText = 'No description provided.' }) {
+  if (!content || !String(content).trim()) {
+    return <p className={`text-slate-400 dark:text-slate-500 italic text-[11px] ${className}`}>{fallbackText}</p>;
+  }
 
-  // 1. First normalize HTML entities safely
-  const normalized = safeDecodeHtmlEntities(content);
+  // 1. Normalize HTML entities safely EXACTLY ONCE at the root
+  const normalized = safeDecodeHtmlEntities(String(content));
 
-  // 2. Parse into blocks (fenced code blocks, headings, lists, paragraphs)
-  const lines = normalized.split('\n');
+  // 2. Parse into blocks (fenced code blocks, headings, lists, blockquotes, paragraphs)
+  const lines = normalized.split(/\r?\n/);
   const blocks = [];
   let inCodeBlock = false;
   let codeBlockLang = '';
@@ -116,7 +140,11 @@ export default function MarkdownMessageRenderer({ content, className = '' }) {
       continue;
     }
 
-    if (trimmed.startsWith('#### ')) {
+    if (trimmed.startsWith('###### ')) {
+      blocks.push({ type: 'h4', text: trimmed.slice(7) });
+    } else if (trimmed.startsWith('##### ')) {
+      blocks.push({ type: 'h4', text: trimmed.slice(6) });
+    } else if (trimmed.startsWith('#### ')) {
       blocks.push({ type: 'h4', text: trimmed.slice(5) });
     } else if (trimmed.startsWith('### ')) {
       blocks.push({ type: 'h3', text: trimmed.slice(4) });
@@ -124,10 +152,14 @@ export default function MarkdownMessageRenderer({ content, className = '' }) {
       blocks.push({ type: 'h2', text: trimmed.slice(3) });
     } else if (trimmed.startsWith('# ')) {
       blocks.push({ type: 'h1', text: trimmed.slice(2) });
+    } else if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
+      blocks.push({ type: 'hr' });
+    } else if (trimmed.startsWith('> ')) {
+      blocks.push({ type: 'blockquote', text: trimmed.slice(2) });
     } else if (/^\d+\.\s/.test(trimmed)) {
       const match = trimmed.match(/^(\d+)\.\s+(.*)$/);
       blocks.push({ type: 'ol', number: match[1], text: match[2] });
-    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('+ ')) {
       blocks.push({ type: 'ul', text: trimmed.slice(2) });
     } else if (!trimmed) {
       blocks.push({ type: 'space' });
@@ -201,6 +233,19 @@ export default function MarkdownMessageRenderer({ content, className = '' }) {
         }
         if (block.type === 'space') {
           return <div key={idx} className="h-0.5" />;
+        }
+        if (block.type === 'hr') {
+          return <hr key={idx} className="my-2.5 border-slate-200 dark:border-[#1f2a3f]" />;
+        }
+        if (block.type === 'blockquote') {
+          return (
+            <div
+              key={idx}
+              className="border-l-2 border-violet-400 dark:border-violet-600 pl-3 py-1 my-1 italic text-slate-600 dark:text-slate-400 bg-slate-50/50 dark:bg-[#121826]/40 rounded-r"
+            >
+              {renderInline(block.text)}
+            </div>
+          );
         }
 
         // Detect provider configuration / connection notices to style actionably

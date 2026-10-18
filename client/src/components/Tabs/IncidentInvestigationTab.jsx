@@ -40,6 +40,7 @@ import {
 import InvestigationStepIndicator from '../InvestigationStepIndicator';
 import CausalGraphCanvas from '../Graph/CausalGraphCanvas';
 import CausalSynthesisPanel from '../Investigation/CausalSynthesisPanel';
+import MarkdownMessageRenderer from '../Common/MarkdownMessageRenderer';
 import { formatRelationshipType } from '../../utils/evidenceAdapter';
 
 export default function IncidentInvestigationTab({
@@ -1883,11 +1884,18 @@ export default function IncidentInvestigationTab({
                         <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                           {investigation.title}
                         </h3>
-                        {investigation.description && (
-                          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed pt-1">
-                            {investigation.description}
-                          </p>
-                        )}
+                        <div className="pt-2.5 border-t border-slate-100 dark:border-[#1a2337] mt-2.5">
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Issue Description & Context</span>
+                          </div>
+                          <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#0c101a] border border-slate-200 dark:border-[#1f2a3f] text-xs max-h-96 overflow-y-auto leading-relaxed">
+                            <MarkdownMessageRenderer
+                              content={investigation.description}
+                              fallbackText="No issue description provided in repository."
+                            />
+                          </div>
+                        </div>
                       </div>
 
                       <button

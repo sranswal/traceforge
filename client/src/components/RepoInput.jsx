@@ -14,14 +14,14 @@ import {
 } from 'lucide-react';
 
 const PRESET_REPOSITORIES = [
-  { label: 'spf13/cobra', tag: 'Go CLI' },
+  { label: 'spf13/cobra', tag: 'Go CLI · Primary Demo', primary: true },
   { label: 'expressjs/express', tag: 'Node.js API' },
   { label: 'fastapi/fastapi', tag: 'Python Framework' },
   { label: 'vitejs/vite', tag: 'Frontend Tooling' }
 ];
 
 export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error }) {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState('https://github.com/spf13/cobra');
   const [isLaunchingSample, setIsLaunchingSample] = useState(false);
 
   const handleSubmit = (e) => {
@@ -100,6 +100,30 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
               Index AST symbols, call hierarchies, and commit history into FalkorDB to enable graph-grounded incident analysis.
             </p>
 
+            {/* Recommended Hackathon Demo Banner */}
+            <div className="p-3.5 rounded-lg bg-violet-50/80 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[11px] font-bold text-violet-800 dark:text-violet-300 uppercase tracking-wide">
+                    Primary Hackathon Demo Repository
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700 dark:text-slate-300">
+                  <strong className="text-slate-900 dark:text-slate-100">spf13/cobra</strong> — Real public GitHub Go repository with live issues, PRs, AST symbols, and FalkorDB graph memory.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('spf13/cobra')}
+                disabled={isLoading || isLaunchingSample}
+                className="px-3.5 py-1.5 rounded-md bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shrink-0 transition-colors shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <span>Analyze Cobra (Demo)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {/* Input Box */}
             <div className="rounded-lg border border-slate-300 dark:border-[#26354f] bg-slate-50 dark:bg-[#0c101a] p-1.5 focus-within:border-violet-500 focus-within:ring-1 focus-within:ring-violet-500 transition-all">
               <form onSubmit={handleSubmit} className="flex items-center gap-2">
@@ -111,7 +135,7 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
                   type="text"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="Paste GitHub URL (e.g. https://github.com/spf13/cobra)"
+                  placeholder="Paste GitHub / GitLab / Bitbucket URL (e.g. https://github.com/spf13/cobra)"
                   disabled={isLoading || isLaunchingSample}
                   className="flex-1 bg-transparent px-2 py-1.5 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none disabled:opacity-50 font-mono"
                 />
@@ -159,12 +183,16 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
                     type="button"
                     onClick={() => handleSelectPreset(preset.label)}
                     disabled={isLoading || isLaunchingSample}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-slate-200 dark:border-[#23314b] bg-slate-100 hover:bg-slate-200/80 dark:bg-[#141c2e] dark:hover:bg-[#1a253c] text-xs transition-colors disabled:opacity-50 cursor-pointer"
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs transition-colors disabled:opacity-50 cursor-pointer ${
+                      preset.primary
+                        ? 'border-violet-300 dark:border-violet-700 bg-violet-50 hover:bg-violet-100/80 dark:bg-violet-950/40 dark:hover:bg-violet-900/50 text-violet-900 dark:text-violet-200 font-semibold'
+                        : 'border-slate-200 dark:border-[#23314b] bg-slate-100 hover:bg-slate-200/80 dark:bg-[#141c2e] dark:hover:bg-[#1a253c] text-slate-800 dark:text-slate-200'
+                    }`}
                   >
-                    <span className="font-mono text-slate-800 dark:text-slate-200 font-medium text-[11px]">
+                    <span className="font-mono text-[11px]">
                       {preset.label}
                     </span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 px-1 py-0.2 rounded bg-white dark:bg-[#0d1320] border border-slate-200 dark:border-[#1e2a40]">
+                    <span className="text-[10px] px-1 py-0.2 rounded bg-white dark:bg-[#0d1320] border border-slate-200 dark:border-[#1e2a40] text-slate-500 dark:text-slate-400">
                       {preset.tag}
                     </span>
                   </button>
@@ -191,16 +219,16 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/40 text-[11px] font-mono font-medium">
                 <Flame className="w-3 h-3 text-amber-500 dark:text-amber-400" />
-                Live Demo Fixture
+                Controlled Graph Ablation Demo
               </span>
               <span className="text-[11px] font-mono text-violet-700 dark:text-violet-300 font-semibold">
-                One-Click Launch
+                Synthetic Fixture
               </span>
             </div>
 
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                <span>Explore Sample Incident</span>
+                <span>Explore Synthetic Incident</span>
               </h2>
               <div className="font-mono text-xs text-violet-700 dark:text-violet-300 mt-0.5">
                 acme/payment-gateway
@@ -208,7 +236,7 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Evaluate TraceForge immediately on the canonical high-concurrency regression:
+              Controlled benchmark fixture designed for demonstrating graph reasoning vs lexical keyword baseline ablation:
             </p>
 
             <ul className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
@@ -246,13 +274,13 @@ export default function RepoInput({ onAnalyze, onExploreSample, isLoading, error
               ) : (
                 <>
                   <ShieldAlert className="w-4 h-4 text-violet-200" />
-                  <span>Launch Sample Investigation</span>
+                  <span>Launch Synthetic Ablation Fixture</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
             <p className="text-[11px] text-center text-slate-500 dark:text-slate-400 mt-2">
-              Instant evaluation · No GitHub token required
+              Controlled ablation benchmark · No GitHub token required
             </p>
           </div>
         </div>
