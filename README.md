@@ -14,6 +14,16 @@
 
 ---
 
+## Product Preview
+
+| **Repository Intelligence** | **Graph Memory** |
+| :--- | :--- |
+| [![Repository Intelligence](assets/screenshots/repository-overview.png)](assets/screenshots/repository-overview.png)<br><sub>**Repository Intelligence:** Explore real repository metadata and code structure.</sub> | [![Graph Memory](assets/screenshots/graph-memory.png)](assets/screenshots/graph-memory.png)<br><sub>**Graph Memory:** Navigate connected files, symbols, commits, and repository evidence.</sub> |
+| **Issue Diagnosis** | **Pull Request Review** |
+| [![Issue Diagnosis](assets/screenshots/issue-diagnosis.png)](assets/screenshots/issue-diagnosis.png)<br><sub>**Issue Diagnosis:** Read rendered issue descriptions alongside observed facts, hypotheses, and uncertainties.</sub> | [![Pull Request Review](assets/screenshots/pr-review.png)](assets/screenshots/pr-review.png)<br><sub>**Pull Request Review:** Examine actual diffs, affected callers, and test-coverage findings.</sub> |
+
+---
+
 ## 1. Product Decision & Core Thesis
 
 When production regressions occur following a deployment, software engineers face a critical challenge: **error messages and logs point to surface symptoms, not the actual root cause.**
